@@ -44,7 +44,7 @@ const prompt = ai.definePrompt({
 
 Venues available:
 - Auditorium (capacity: 500, facilities: projector, sound system, stage, A/C, drum kit)
-- Impact Greens (capacity: 200, facilities: kitchen). Note: Since it's an open space, all audio, video, lighting, and tent setups are additional and not included.
+- Impact Greens (capacity: 1000, facilities: kitchen). Note: Since it's an open space, special seating arrangements must be made. All audio, video, lighting, and tent setups are also additional and not included.
 - Ramanujan Hall (capacity: 100, facilities: projector, whiteboard, sound system)
 
 Consider the venue capacity and available facilities when making your recommendation. If a specific facility isn't available at any venue, mention that in the response.

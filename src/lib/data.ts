@@ -6,7 +6,7 @@ export const departments = [
 
 export const venues = [
   { id: 'auditorium', name: 'Auditorium', capacity: 500, facilities: ['projector', 'sound system', 'stage', 'A/C', 'drum kit'], imageId: 'auditorium' },
-  { id: 'impact-greens', name: 'Impact Greens', capacity: 200, facilities: ['kitchen'], imageId: 'impact-greens' },
+  { id: 'impact-greens', name: 'Impact Greens', capacity: 1000, facilities: ['kitchen'], imageId: 'impact-greens' },
   { id: 'ramanujan-hall', name: 'Ramanujan Hall', capacity: 100, facilities: ['projector', 'whiteboard', 'sound system'], imageId: 'ramanujan-hall' },
 ];
 
