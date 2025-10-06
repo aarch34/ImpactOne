@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,12 +96,12 @@ export default function BookingsPage() {
         <h1 className="text-3xl font-bold font-headline tracking-tight">Create a New Booking</h1>
         <p className="text-muted-foreground">Fill in the details below to request a venue or bus.</p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Booking Form</CardTitle>
-          <CardDescription>All requests are subject to approval by the department head.</CardDescription>
-        </CardHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Booking Form</CardTitle>
+            <CardDescription>All requests are subject to approval by the department head.</CardDescription>
+          </CardHeader>
           <CardContent className="grid gap-6">
             <div className="grid md:grid-cols-2 gap-4">
               <Controller
@@ -204,15 +204,15 @@ export default function BookingsPage() {
               <Textarea id="event-description" placeholder="A brief description of the event." {...form.register("eventDescription")} />
               {form.formState.errors.eventDescription && <p className="text-sm font-medium text-destructive">{form.formState.errors.eventDescription.message}</p>}
             </div>
-            <div className="flex justify-end">
+          </CardContent>
+          <CardFooter className="flex justify-end">
               <Button type="submit" disabled={loading || !user}>
                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit for Approval
               </Button>
-            </div>
-          </CardContent>
-        </form>
-      </Card>
+            </CardFooter>
+        </Card>
+      </form>
     </div>
   )
 }
