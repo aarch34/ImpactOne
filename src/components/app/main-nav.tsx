@@ -4,8 +4,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, CalendarPlus, History, Bot, ShieldCheck } from "lucide-react";
-import { useUser } from "@/firebase";
+import { LayoutDashboard, Calendar, CalendarPlus, History, Bot } from "lucide-react";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -15,22 +14,12 @@ const links = [
   { href: "/recommender", label: "AI Recommender", icon: Bot },
 ];
 
-const adminLink = { href: "/admin", label: "Admin", icon: ShieldCheck };
-
 export function MainNav() {
   const pathname = usePathname();
-  const { user } = useUser();
-
-  const isAdmin = user?.email === 'admin.impact@iceas.ac.in';
-  
-  const navLinks = [...links];
-  if (isAdmin) {
-    navLinks.push(adminLink);
-  }
 
   return (
     <SidebarMenu>
-      {navLinks.map((link) => (
+      {links.map((link) => (
         <SidebarMenuItem key={link.href}>
           <SidebarMenuButton
             asChild

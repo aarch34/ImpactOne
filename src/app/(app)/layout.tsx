@@ -5,16 +5,20 @@ import { MainNav } from "@/components/app/main-nav";
 import { UserNav } from "@/components/app/user-nav";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Briefcase, LifeBuoy, Search, Mail } from "lucide-react";
+import { Briefcase, LifeBuoy, Search, Mail, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/firebase";
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user } = useUser();
+  const isAdmin = user?.email === 'admin.impact@iceas.ac.in';
+
   return (
     <SidebarProvider>
         <Sidebar collapsible="icon" className="border-r bg-sidebar text-sidebar-foreground" side="left">
@@ -30,38 +34,52 @@ export default function AppLayout({
             <MainNav />
           </SidebarContent>
           <SidebarFooter>
-            <AlertDialog>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                    <AlertDialogTrigger asChild>
-                      <SidebarMenuButton
-                          tooltip="Support"
-                          className="justify-start"
-                      >
-                          <LifeBuoy className="size-5" />
-                          <span className="group-data-[collapsible=icon]:hidden">Support</span>
-                      </SidebarMenuButton>
-                    </AlertDialogTrigger>
-                </SidebarMenuItem>
-              </SidebarMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Contact Support</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Need help? Click the button below to send an email to the system administrator. Please include a detailed description of your issue.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <a href="mailto:admin@impactone.com">
-                      <Mail className="mr-2 h-4 w-4" />
-                      Contact Admin
-                    </a>
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+             <SidebarMenu>
+                {isAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Admin"
+                      className="justify-start"
+                    >
+                      <Link href="/admin">
+                        <ShieldCheck className="size-5" />
+                        <span className="group-data-[collapsible=icon]:hidden">Admin</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                <AlertDialog>
+                  <SidebarMenuItem>
+                      <AlertDialogTrigger asChild>
+                        <SidebarMenuButton
+                            tooltip="Support"
+                            className="justify-start"
+                        >
+                            <LifeBuoy className="size-5" />
+                            <span className="group-data-[collapsible=icon]:hidden">Support</span>
+                        </SidebarMenuButton>
+                      </AlertDialogTrigger>
+                  </SidebarMenuItem>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Contact Support</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Need help? Click the button below to send an email to the system administrator. Please include a detailed description of your issue.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                      <a href="mailto:admin@impactone.com">
+                        <Mail className="mr-2 h-4 w-4" />
+                        Contact Admin
+                      </a>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </SidebarMenu>
           </SidebarFooter>
         </Sidebar>
         <div className="flex flex-1 flex-col">
