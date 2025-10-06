@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Briefcase } from 'lucide-react';
+import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -32,7 +33,8 @@ export default function LoginPage() {
   const handleFirebaseError = (code: string) => {
     switch (code) {
       case 'auth/user-not-found':
-        return 'No user found with this email.';
+      case 'auth/invalid-credential':
+        return 'Invalid email or password. Please try again.';
       case 'auth/wrong-password':
         return 'Incorrect password. Please try again.';
       case 'auth/too-many-requests':
@@ -135,17 +137,20 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Optional Forgot Password Link */}
-          <p className="text-right text-sm text-muted-foreground hover:underline cursor-pointer">
-            Forgot your password?
-          </p>
-
-          {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+          {error && <p className="mt-2 text-sm font-medium text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Login
           </Button>
+
+           <p className="text-center text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link href="/register" className="underline hover:text-primary">
+                Sign Up
+              </Link>
+            </p>
+
         </CardContent>
       </form>
     </Card>
