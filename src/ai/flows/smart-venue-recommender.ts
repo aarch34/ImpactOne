@@ -19,7 +19,7 @@ const RecommendVenueInputSchema = z.object({
     .string()
     .describe(
       'A comma-separated list of required facilities for the event (e.g., projector, whiteboard, sound system).' + 
-      'Supported facilities are: projector, whiteboard, sound system, stage, kitchen, wifi.'
+      'Supported facilities are: projector, whiteboard, sound system, stage, kitchen, wifi, A/C, drum kit.'
     ),
 });
 export type RecommendVenueInput = z.infer<typeof RecommendVenueInputSchema>;
@@ -43,8 +43,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI venue recommendation expert. Based on the number of attendees and the required facilities, you will recommend the most suitable venue.
 
 Venues available:
-- Auditorium (capacity: 500, facilities: projector, sound system, stage)
-- Impact Greens (capacity: 200, facilities: projector, whiteboard, sound system, kitchen)
+- Auditorium (capacity: 500, facilities: projector, sound system, stage, A/C, drum kit)
+- Impact Greens (capacity: 200, facilities: kitchen). Note: Since it's an open space, all audio, video, lighting, and tent setups are additional and not included.
 - Ramanujan Hall (capacity: 100, facilities: projector, whiteboard, sound system)
 
 Consider the venue capacity and available facilities when making your recommendation. If a specific facility isn't available at any venue, mention that in the response.

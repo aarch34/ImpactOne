@@ -5,14 +5,14 @@ export const departments = [
 ];
 
 export const venues = [
-  { id: 'auditorium', name: 'Auditorium', capacity: 500, facilities: ['projector', 'sound system', 'stage'], imageId: 'auditorium' },
-  { id: 'impact-greens', name: 'Impact Greens', capacity: 200, facilities: ['projector', 'whiteboard', 'sound system', 'kitchen'], imageId: 'impact-greens' },
+  { id: 'auditorium', name: 'Auditorium', capacity: 500, facilities: ['projector', 'sound system', 'stage', 'A/C', 'drum kit'], imageId: 'auditorium' },
+  { id: 'impact-greens', name: 'Impact Greens', capacity: 200, facilities: ['kitchen'], imageId: 'impact-greens' },
   { id: 'ramanujan-hall', name: 'Ramanujan Hall', capacity: 100, facilities: ['projector', 'whiteboard', 'sound system'], imageId: 'ramanujan-hall' },
 ];
 
 export const buses = [
-  { id: 'bus-1', name: 'Bus 1', capacity: 50, facilities: ['A/C'] },
-  { id: 'bus-2', name: 'Bus 2', capacity: 50, facilities: ['A/C'] },
+  { id: 'bus-1', name: 'Bus 1', capacity: 45, facilities: ['A/C'] },
+  { id: 'bus-2', name: 'Bus 2', capacity: 45, facilities: ['A/C'] },
 ];
 
 export const bookingHistory = [
