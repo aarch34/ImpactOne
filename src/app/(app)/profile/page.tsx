@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 const profileSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -27,7 +26,6 @@ export default function ProfilePage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -59,8 +57,9 @@ export default function ProfilePage() {
         title: 'Profile Updated',
         description: 'Your profile has been updated successfully.',
       });
-       // Force a reload of the user object by re-fetching or simply reloading the page
-       router.refresh();
+       
+       // Force a full page reload to ensure user state is refreshed everywhere.
+       window.location.reload();
 
     } catch (error) {
       toast({
