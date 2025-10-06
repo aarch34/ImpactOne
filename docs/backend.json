@@ -1,105 +1,232 @@
 {
   "entities": {
-    "userProfile": {
-      "title": "User Profile",
-      "description": "A user's public profile information.",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
+      "description": "Represents a user in the system.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
         "displayName": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "Display name of the user."
         },
-        "photoURL": {
+        "role": {
           "type": "string",
-          "description": "The URL of the user's profile photo."
-        }
-      }
-    },
-    "booking": {
-      "title": "Booking",
-      "description": "A booking for a campus resource.",
-      "type": "object",
-      "properties": {
-        "resourceType": {
-          "type": "string",
-          "description": "The type of resource being booked (e.g., 'venue', 'bus')."
-        },
-        "resourceId": {
-          "type": "string",
-          "description": "The ID of the specific resource being booked."
-        },
-        "resourceName": {
-          "type": "string",
-          "description": "The name of the specific resource being booked."
-        },
-        "bookingDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date and time of the booking."
-        },
-        "attendees": {
-          "type": "number",
-          "description": "The number of attendees for the event."
-        },
-        "eventTitle": {
-          "type": "string",
-          "description": "The title of the event."
-        },
-        "eventDescription": {
-          "type": "string",
-          "description": "The description or purpose of the event."
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "Pending",
-            "Approved",
-            "Rejected"
-          ],
-          "description": "The approval status of the booking."
-        },
-        "requesterId": {
-          "type": "string",
-          "description": "The UID of the user who made the booking request."
-        },
-        "requesterName": {
-          "type": "string",
-          "description": "The name of the user who made the booking request."
+          "description": "Role of the user (e.g., Faculty, Department Head, Admin)."
         },
         "department": {
           "type": "string",
-          "description": "The department making the booking."
+          "description": "The department the user belongs to (e.g., Engineering, Architecture, MBA)."
         }
       },
       "required": [
-        "resourceType",
-        "resourceId",
-        "resourceName",
-        "bookingDate",
-        "eventTitle",
+        "id",
+        "email",
+        "displayName",
+        "role",
+        "department"
+      ]
+    },
+    "Venue": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Venue",
+      "type": "object",
+      "description": "Represents a bookable venue.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the venue."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the venue (e.g., Auditorium, Impact Green, Ramanujan Hall)."
+        },
+        "seatingCapacity": {
+          "type": "number",
+          "description": "The seating capacity of the venue."
+        },
+        "facilities": {
+          "type": "array",
+          "description": "List of facilities available at the venue.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "seatingCapacity",
+        "facilities"
+      ]
+    },
+    "Booking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Booking",
+      "type": "object",
+      "description": "Represents a booking made by a user for a venue.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the booking."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Booking)"
+        },
+        "venueId": {
+          "type": "string",
+          "description": "Reference to Venue. (Relationship: Venue 1:N Booking)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the booking.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the booking.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the booking (e.g., requested, approved, rejected)."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for booking"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "venueId",
+        "startTime",
+        "endTime",
         "status",
-        "requesterId",
-        "requesterName"
+        "reason"
+      ]
+    },
+    "Bus": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bus",
+      "type": "object",
+      "description": "Represents a bookable bus.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the bus."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the bus."
+        },
+        "seatingCapacity": {
+          "type": "number",
+          "description": "The seating capacity of the bus."
+        },
+        "facilities": {
+          "type": "array",
+          "description": "List of facilities available on the bus.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "seatingCapacity",
+        "facilities"
       ]
     }
   },
   "auth": {
     "providers": [
+      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/userProfile"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, indexed by user ID. This allows for path-based ownership for user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
       },
-      "description": "Stores public profile information for each user."
-    },
-    "/bookings": {
-      "schema": {
-        "$ref": "#/entities/booking"
+      {
+        "path": "/venues/{venueId}",
+        "definition": {
+          "entityName": "Venue",
+          "schema": {
+            "$ref": "#/backend/entities/Venue"
+          },
+          "description": "Stores venue information. Venues are global resources, so they reside in a root-level collection.",
+          "params": [
+            {
+              "name": "venueId",
+              "description": "The unique identifier for the venue."
+            }
+          ]
+        }
       },
-      "description": "Collection of all booking requests for campus resources."
-    }
+      {
+        "path": "/buses/{busId}",
+        "definition": {
+          "entityName": "Bus",
+          "schema": {
+            "$ref": "#/backend/entities/Bus"
+          },
+          "description": "Stores bus information. Buses are global resources, so they reside in a root-level collection.",
+          "params": [
+            {
+              "name": "busId",
+              "description": "The unique identifier for the bus."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/bookings/{bookingId}",
+        "definition": {
+          "entityName": "Booking",
+          "schema": {
+            "$ref": "#/backend/entities/Booking"
+          },
+          "description": "Stores booking requests made by each user. Includes denormalized data to avoid authorization `get()` calls. The 'userId' field is used for ownership checks in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user who made the booking."
+            },
+            {
+              "name": "bookingId",
+              "description": "The unique identifier for the booking."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability, aligning with the specified principles. User data is stored in a dedicated collection (`users`) using the user's UID as the document ID, enabling path-based ownership for private data. Venue and Bus data are stored in root-level collections (`venues` and `buses`) since they are global resources. Bookings are stored as subcollections under the respective user document (`/users/{userId}/bookings/{bookingId}`), enforcing a clear ownership model.  \n\nAuthorization Independence is achieved by storing all necessary authorization information directly within the booking documents. For example, if certain venue bookings require departmental approval, the relevant department information could be denormalized into the booking document itself. The structure facilitates secure `list` operations (QAPs) by segregating data based on access needs and leveraging path-based ownership for filtering."
   }
 }
