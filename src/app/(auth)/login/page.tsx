@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useForm } from 'react-hook-form';
@@ -50,7 +49,7 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: "Welcome back! Redirecting...",
       });
-      // Redirection is now handled by the auth layout which will detect the change in user state.
+      // Redirection is handled by the auth layout.
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
       setError(errorMessage);
@@ -84,12 +83,7 @@ export default function LoginPage() {
             {errors.email && <p className="text-sm font-medium text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
-            <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              <Link href="#" className="ml-auto inline-block text-sm underline">
-                Forgot your password?
-              </Link>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" {...register('password')} />
             {errors.password && <p className="text-sm font-medium text-destructive">{errors.password.message}</p>}
           </div>
