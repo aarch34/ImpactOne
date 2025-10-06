@@ -29,9 +29,10 @@ export function UserNav() {
   const router = useRouter();
 
   const handleLogout = async () => {
+    if (!auth) return;
     try {
       await signOut(auth);
-      // After signing out, the auth listener will handle anonymous sign-in
+      router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
     }
@@ -89,7 +90,7 @@ export function UserNav() {
                 <span>Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" disabled={user?.isAnonymous}>
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
             </DropdownMenuItem>

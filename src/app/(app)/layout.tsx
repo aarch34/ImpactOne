@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@/firebase";
-import { signInAnonymously } from "firebase/auth";
 
 import { MainNav } from "@/components/app/main-nav";
 import { UserNav } from "@/components/app/user-nav";
@@ -17,35 +17,22 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
-    if (auth && !user && !isUserLoading) {
-        signInAnonymously(auth).catch((error) => {
-            console.error("Anonymous sign-in failed:", error);
-        });
+    if (!isUserLoading && !user) {
+      router.push('/login');
     }
-  }, [user, isUserLoading, auth]);
+  }, [user, isUserLoading, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
-  
-  if (!user) {
-    // This can be a loading state or null while waiting for anonymous user to be created.
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Authenticating...</p>
-      </div>
-    );
-  }
-
 
   return (
     <SidebarProvider>
