@@ -5,7 +5,7 @@
  *  - /users/{userId}: Stores user profiles, accessible only to the owner.
  *  - /venues/{venueId}: Stores venue data, publicly readable.
  *  - /buses/{busId}: Stores bus data, publicly readable.
- *  - /users/{userId}/bookings/{bookingId}: Stores booking requests, accessible only to the owner and admin.
+ *  - /bookings/{bookingId}: Stores booking requests, accessible only to the owner and admin.
  * @keySecurityDecisions
  *  - Users can only read and write their own profile data.
  *  - Listing all users is disallowed.
@@ -13,9 +13,10 @@
  *  - Only the admin can approve or reject the bookings.
  *  - Bookings are owned by the user who created them.
  * @denormalizationForAuthorization
- *  - The 'Booking' entity contains a 'userId' field that must match the path parameter to enforce ownership.
+ *  - The 'Booking' entity contains a 'requesterId' field that must match the user's path parameter to enforce ownership.
  * @structuralSegregation
- *  - Private user data (profiles and bookings) is stored under the /users/{userId} path.
+ *  - Private user data (profiles) is stored under the /users/{userId} path.
+ *  - Bookings are stored under the top-level /bookings collection.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -50,6 +51,7 @@ service cloud.firestore {
     function isAdmin() {
         return request.auth.token.email == 'admin.impact@iceas.ac.in';
     }
+
     /**
      * @description Checks if the user is the owner and the resource exists.
      */
@@ -123,25 +125,25 @@ service cloud.firestore {
         allow delete: if false;
     }
 
-    /**
-     * @description Rules for bookings under a specific user.
-     * @path /users/{userId}/bookings/{bookingId}
-     * @allow (get) isOwner(userId) || isAdmin() - Allows the owner or admin to read the booking.
-     * @allow (list) isOwner(userId) - Allows the owner to list their bookings.
-     * @allow (create) isOwner(userId) && request.resource.data.userId == userId - Allows a user to create a booking under their ID, validating the userId field.
-     * @allow (update) (isOwner(userId) && resource.data.userId == userId) || isAdmin() - Allows the owner or admin to update the booking if the userId field matches and the resource exists.
-     * @allow (delete) (isOwner(userId) && resource.data.userId == userId) || isAdmin() - Allows the owner or admin to delete the booking if the userId field matches and the resource exists.
-     * @deny (get) !isOwner(userId) && !isAdmin() - Denies non-owners from reading the booking.
-     * @deny (create) request.resource.data.userId != userId - Denies creating a booking with a mismatched userId.
-     * @deny (update) resource.data.userId != userId && !isAdmin() - Denies updating a booking with a mismatched userId.
+     /**
+     * @description Rules for bookings.
+     * @path /bookings/{bookingId}
+     * @allow (get) request.auth.uid == resource.data.requesterId || isAdmin() - Allows the owner or admin to read the booking.
+     * @allow (list) request.auth.uid == resource.data.requesterId - Allows the owner to list their bookings.
+     * @allow (create) request.auth.uid == request.resource.data.requesterId - Allows a user to create a booking under their ID, validating the requesterId field.
+     * @allow (update) isAdmin() - Allows the admin to update any booking.
+     * @allow (delete) isAdmin() - Allows the admin to delete the booking.
+     * @deny (get) !isOwner(resource.data.requesterId) && !isAdmin() - Denies non-owners and non-admins from reading the booking.
+     * @deny (create) request.resource.data.requesterId != request.auth.uid - Denies creating a booking with a mismatched requesterId.
+     * @deny (update) !isAdmin() - Denies non-admins from updating a booking.
      * @principle Enforces ownership for bookings and admin override.
      */
-    match /users/{userId}/bookings/{bookingId} {
-        allow get: if isOwner(userId) || isAdmin();
-        allow list: if isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if (isExistingOwner(userId) && resource.data.userId == userId) || isAdmin();
-        allow delete: if (isExistingOwner(userId) && resource.data.userId == userId) || isAdmin();
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && request.auth.uid == resource.data.requesterId || isAdmin();
+      allow list: if isSignedIn() && request.auth.uid == resource.data.requesterId;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.requesterId;
+      allow update: if isExistingOwner(resource.data.requesterId) && isAdmin();
+      allow delete: if isExistingOwner(resource.data.requesterId) && isAdmin();
     }
   }
 }
