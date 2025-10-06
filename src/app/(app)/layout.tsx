@@ -3,8 +3,8 @@
 
 import { MainNav } from "@/components/app/main-nav";
 import { UserNav } from "@/components/app/user-nav";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Briefcase, Search } from "lucide-react";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Briefcase, LifeBuoy, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
@@ -27,6 +27,22 @@ export default function AppLayout({
           <SidebarContent>
             <MainNav />
           </SidebarContent>
+          <SidebarFooter>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton
+                        asChild
+                        tooltip="Support"
+                        className="justify-start"
+                    >
+                        <Link href="#">
+                            <LifeBuoy className="size-5" />
+                            <span className="group-data-[collapsible=icon]:hidden">Support</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+          </SidebarFooter>
         </Sidebar>
         <div className="flex flex-1 flex-col">
             <header className="flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-30">
