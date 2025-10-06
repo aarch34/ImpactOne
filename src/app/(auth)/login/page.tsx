@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Briefcase } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const {
     register,
@@ -49,7 +51,8 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: "Welcome back! Redirecting...",
       });
-      // Redirection is handled by the auth layout.
+      // The root page.tsx will handle redirection on auth state change.
+      router.push('/');
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
       setError(errorMessage);

@@ -1,14 +1,10 @@
 
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
-
 import { MainNav } from "@/components/app/main-nav";
 import { UserNav } from "@/components/app/user-nav";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Briefcase, Search, Loader2 } from "lucide-react";
+import { Briefcase, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
@@ -17,28 +13,6 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    // Wait until the auth check is complete before acting.
-    if (!isUserLoading && !user) {
-      // If loading is done and there's no user, redirect to login.
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
-  // While checking auth status, or if there's no user (and we're about to redirect),
-  // show a full-screen loader. This prevents content from flashing.
-  if (isUserLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  // If we're here, loading is done and a user exists. Show the app.
   return (
     <SidebarProvider>
         <Sidebar collapsible="icon" className="border-r bg-sidebar text-sidebar-foreground" side="left">
