@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -25,12 +26,16 @@ export default function AppLayout({
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || !user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
+  }
+  
+  if (!user) {
+    return null; // or a redirect, but the useEffect handles that.
   }
 
   return (
