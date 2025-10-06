@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Briefcase } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -27,7 +26,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
 
   const {
     register,
@@ -51,8 +49,7 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: "Welcome back! Redirecting...",
       });
-      // The root page.tsx will handle redirection on auth state change.
-      router.push('/');
+      // Redirection is now handled by the root page.tsx
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
       setError(errorMessage);
@@ -78,25 +75,25 @@ export default function LoginPage() {
         <CardTitle className="text-2xl font-bold">Login</CardTitle>
         <CardDescription>Enter your email below to login to your account</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="m@example.com" {...register('email')} />
-            {errors.email && <p className="text-sm font-medium text-destructive">{errors.email.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" {...register('password')} />
-            {errors.password && <p className="text-sm font-medium text-destructive">{errors.password.message}</p>}
-          </div>
-          {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Login
-          </Button>
-        </form>
-      </CardContent>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="m@example.com" {...register('email')} />
+              {errors.email && <p className="text-sm font-medium text-destructive">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" {...register('password')} />
+              {errors.password && <p className="text-sm font-medium text-destructive">{errors.password.message}</p>}
+            </div>
+            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Login
+            </Button>
+        </CardContent>
+      </form>
     </Card>
   );
 }
