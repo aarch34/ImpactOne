@@ -62,9 +62,9 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.isAnonymous ? 'Anonymous User' : (user?.displayName || 'User')}</p>
+                <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                {user?.isAnonymous ? 'guest@impact.ac.in' : (user?.email || 'No email provided')}
+                {user?.email || 'No email provided'}
                 </p>
             </div>
             </DropdownMenuLabel>
