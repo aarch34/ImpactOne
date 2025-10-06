@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { Entry } from './entry';
 
 export const metadata: Metadata = {
   title: 'ImpactOne',
@@ -23,7 +24,9 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased')}>
         <FirebaseClientProvider>
-          {children}
+          <Entry>
+            {children}
+          </Entry>
         </FirebaseClientProvider>
         <Toaster />
       </body>
