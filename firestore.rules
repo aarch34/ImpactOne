@@ -21,6 +21,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if the user is signed in.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     /**
      * @description Enforces strict user-ownership for user profiles. Only the authenticated user can read or write their own profile.
      * @path /users/{userId}
@@ -39,7 +44,7 @@ service cloud.firestore {
     match /users/{userId} {
       // Helper function to check if the authenticated user is the owner of the document.
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return isSignedIn() && request.auth.uid == userId;
       }
 
       // Helper function to check if the authenticated user is the owner of the document, and if the document exists.
@@ -112,7 +117,7 @@ service cloud.firestore {
     match /users/{userId}/bookings/{bookingId} {
       // Helper function to check if the authenticated user is the owner of the booking.
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return isSignedIn() && request.auth.uid == userId;
       }
 
       // Helper function to check if the authenticated user is the owner of the document, and if the document exists.

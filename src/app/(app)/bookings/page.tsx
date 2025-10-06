@@ -60,6 +60,7 @@ export default function BookingsPage() {
       status: "Pending",
       requesterId: user.uid,
       requesterName: user.displayName || "Anonymous User",
+      department: data.department,
     };
     
     addDoc(bookingsCollectionRef, newBookingData)
