@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,21 +26,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
-
-  // ✅ Check if user is already authenticated
-  useEffect(() => {
-    if (!auth) return;
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is already logged in, redirect to dashboard
-        router.push('/dashboard');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [auth, router]);
 
   const handleFirebaseError = (code: string) => {
     switch (code) {
@@ -76,23 +60,17 @@ export default function LoginPage() {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      
-      // ✅ Wait for auth state to be set before redirecting
-      if (userCredential.user) {
-        toast({
-          title: 'Login Successful',
-          description: "Welcome back! Redirecting...",
-        });
+      await signInWithEmailAndPassword(auth, data.email, data.password);
 
-        // ✅ The central Entry component will handle the redirect. No need to push here.
-        // router.push('/dashboard');
-      }
+      toast({
+        title: 'Login Successful',
+        description: "Welcome back! Redirecting to your dashboard...",
+      });
+      // No manual redirect needed here. The Entry component will handle it.
 
     } catch (e: any) {
       const errorMessage = handleFirebaseError(e.code || '');
       setError(errorMessage);
-
       toast({
         variant: 'destructive',
         title: 'Login Failed',
