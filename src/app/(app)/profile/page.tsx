@@ -25,7 +25,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -73,7 +73,7 @@ export default function ProfilePage() {
     }
   };
   
-    if (!user) {
+    if (isUserLoading) {
         return (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
