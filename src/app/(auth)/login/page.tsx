@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useForm } from 'react-hook-form';
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleFirebaseError = (code: string) => {
     switch (code) {
@@ -66,7 +68,7 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: "Welcome back! Redirecting to your dashboard...",
       });
-      // No manual redirect needed here. The Entry component will handle it.
+      router.push('/dashboard');
 
     } catch (e: any) {
       const errorMessage = handleFirebaseError(e.code || '');
