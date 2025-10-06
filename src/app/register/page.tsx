@@ -42,6 +42,15 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setLoading(true);
+    if (!auth || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: 'Firebase services are not available. Please try again later.',
+      });
+      setLoading(false);
+      return;
+    }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
@@ -57,20 +66,7 @@ export default function RegisterPage() {
         role: 'Faculty', // Default role
       };
 
-      setDoc(userDocRef, userData)
-        .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: userData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description: "Could not save user profile. Insufficient permissions.",
-            });
-        });
+      await setDoc(userDocRef, userData);
 
       toast({
         title: 'Account Created!',
@@ -79,11 +75,30 @@ export default function RegisterPage() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message || 'An unexpected error occurred.',
-      });
+       if (error.code && error.code.startsWith('auth/')) {
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message,
+        });
+      } else {
+         const userDocRef = doc(firestore, 'users', auth.currentUser?.uid || 'unknown');
+         const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'create',
+            requestResourceData: {
+              displayName: data.displayName,
+              department: data.department,
+              role: 'Faculty',
+            },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "Could not save user profile. Insufficient permissions.",
+        });
+      }
     } finally {
       setLoading(false);
     }
