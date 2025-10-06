@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Briefcase } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
 
 const registerSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -27,6 +28,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -53,7 +55,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    if (!auth) {
+    if (!auth || !firestore) {
       setError("Authentication service is not available.");
       setLoading(false);
       return;
@@ -65,6 +67,13 @@ export default function RegisterPage() {
       // Update the user's profile with the display name
       await updateProfile(userCredential.user, {
           displayName: data.displayName
+      });
+
+      // Create a user document in Firestore
+      const userRef = doc(firestore, 'users', userCredential.user.uid);
+      await setDoc(userRef, {
+        displayName: data.displayName,
+        email: data.email,
       });
 
       toast({
