@@ -4,7 +4,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, CalendarPlus, History, Bot, User, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Calendar, CalendarPlus, History, Bot, ShieldCheck } from "lucide-react";
 import { useUser } from "@/firebase";
 
 const links = [
@@ -13,7 +13,6 @@ const links = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/history", label: "History", icon: History },
   { href: "/recommender", label: "AI Recommender", icon: Bot },
-  { href: "/profile", label: "Profile", icon: User },
 ];
 
 const adminLink = { href: "/admin", label: "Admin", icon: ShieldCheck };
