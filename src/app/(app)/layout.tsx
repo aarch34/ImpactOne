@@ -21,23 +21,23 @@ export default function AppLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if loading is complete and there's no user.
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading) {
+  // While loading, or if there's no user (and we're about to redirect), show a loader.
+  // This prevents flashing content and ensures a smoother transition.
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
-
-  if (!user) {
-    return null; // Don't render anything while redirecting
-  }
-
+  
+  // If we've made it here, loading is done and we have a user.
   return (
     <SidebarProvider>
         <Sidebar collapsible="icon" className="border-r bg-sidebar text-sidebar-foreground" side="left">
