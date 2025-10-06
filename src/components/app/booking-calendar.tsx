@@ -1,21 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { bookingHistory } from '@/lib/data';
-import { parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-
-const events = bookingHistory.map(b => ({
-  date: parseISO(b.date),
-  title: b.resource,
-  department: b.department,
-  status: b.status as 'Approved' | 'Pending' | 'Rejected',
-}));
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import type { Booking } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 
 export function BookingCalendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const firestore = useFirestore();
+  const { user } = useUser();
+
+  const bookingsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, `users/${user.uid}/bookings`));
+  }, [firestore, user]);
+
+  const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
+
+  const events = useMemo(() => {
+    return bookings?.map(b => ({
+        ...b,
+        date: b.bookingDate.toDate(),
+        title: b.resourceName,
+    })) || [];
+  }, [bookings]);
 
   const selectedDayEvents = date ? events.filter(e => e.date.toDateString() === date.toDateString()) : [];
 
@@ -32,7 +45,6 @@ export function BookingCalendar() {
     }
   };
 
-
   return (
     <div className="grid md:grid-cols-3 gap-6">
       <div className="md:col-span-2">
@@ -46,10 +58,12 @@ export function BookingCalendar() {
                 modifiers={{
                     approved: events.filter(e => e.status === 'Approved').map(e => e.date),
                     pending: events.filter(e => e.status === 'Pending').map(e => e.date),
+                    rejected: events.filter(e => e.status === 'Rejected').map(e => e.date),
                 }}
                 modifiersClassNames={{
                     approved: 'bg-primary/20',
-                    pending: 'bg-accent/30',
+                    pending: 'bg-secondary text-secondary-foreground',
+                    rejected: 'bg-destructive/20',
                 }}
             />
           </CardContent>
@@ -58,13 +72,17 @@ export function BookingCalendar() {
       <div className="md:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Events for {date ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '...'}</CardTitle>
+            <CardTitle className="font-headline">Events for {date ? format(date, 'PPP') : '...'}</CardTitle>
             <CardDescription>Bookings on the selected date.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedDayEvents.length > 0 ? (
-              selectedDayEvents.map((event, index) => (
-                <div key={index} className="flex items-center p-3 rounded-md border bg-card">
+            {isLoading ? (
+                <div className="flex justify-center items-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : selectedDayEvents.length > 0 ? (
+              selectedDayEvents.map((event) => (
+                <div key={event.id} className="flex items-center p-3 rounded-md border bg-card">
                   <div className="flex-1">
                     <p className="font-semibold">{event.title}</p>
                     <p className="text-sm text-muted-foreground">{event.department}</p>
