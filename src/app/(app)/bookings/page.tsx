@@ -17,7 +17,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 
 const bookingSchema = z.object({
@@ -36,6 +36,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -44,42 +45,48 @@ export default function BookingsPage() {
   const resourceType = form.watch("resourceType");
 
   const onSubmit = async (data: BookingFormData) => {
-    if (!firestore) return;
+    if (!firestore || !user) return;
     setLoading(true);
 
     const allResources = [...venues, ...buses];
     const resourceName = allResources.find(r => r.id === data.resourceId)?.name || 'Unknown Resource';
 
-    try {
-      // In a real app, user info would come from an auth hook, but for now we'll use a placeholder.
-      const user = { uid: 'anonymous-user' };
-      const bookingsCollectionRef = collection(firestore, `users/${user.uid}/bookings`);
-      
-      await addDoc(bookingsCollectionRef, {
-        ...data,
-        resourceName,
-        bookingDate: Timestamp.fromDate(data.bookingDate),
-        status: "Pending",
-        // NOTE: In a real app, user info would come from an auth hook
-        requesterId: "anonymous-user",
-        requesterName: "Jane Doe",
-      });
+    const bookingsCollectionRef = collection(firestore, `users/${user.uid}/bookings`);
+    
+    const newBookingData = {
+      ...data,
+      resourceName,
+      bookingDate: Timestamp.fromDate(data.bookingDate),
+      status: "Pending",
+      requesterId: user.uid,
+      requesterName: user.displayName || "Anonymous User",
+    };
+    
+    addDoc(bookingsCollectionRef, newBookingData)
+      .then(() => {
+        toast({
+          title: "Booking Request Submitted!",
+          description: "Your request has been sent for approval.",
+        });
+        form.reset();
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: bookingsCollectionRef.path,
+            operation: 'create',
+            requestResourceData: newBookingData,
+        });
 
-      toast({
-        title: "Booking Request Submitted!",
-        description: "Your request has been sent for approval.",
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "There was a problem with your request. Insufficient permissions.",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
       });
-      form.reset();
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: "There was a problem with your request.",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -197,7 +204,7 @@ export default function BookingsPage() {
               {form.formState.errors.eventDescription && <p className="text-sm font-medium text-destructive">{form.formState.errors.eventDescription.message}</p>}
             </div>
             <div className="flex justify-end">
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !user}>
                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit for Approval
               </Button>
