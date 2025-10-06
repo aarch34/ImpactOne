@@ -17,7 +17,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useUser, useAuth, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 
 const bookingSchema = z.object({
@@ -36,7 +36,8 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const auth = useAuth(); // ✅ Add useAuth hook
+  const { user, isUserLoading } = useUser(auth); // ✅ Pass auth to useUser
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -59,7 +60,7 @@ export default function BookingsPage() {
       bookingDate: Timestamp.fromDate(data.bookingDate),
       status: "Pending",
       requesterId: user.uid,
-      requesterName: user.displayName || "Anonymous User",
+      requesterName: user.displayName || user.email?.split('@')[0] || "Anonymous User", // ✅ Better fallback
       department: data.department,
     };
     
@@ -89,6 +90,16 @@ export default function BookingsPage() {
         setLoading(false);
       });
   };
+
+  // ✅ Show loading while user is loading
+  if (isUserLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Loading booking form...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -206,7 +217,7 @@ export default function BookingsPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-end">
-              <Button type="submit" disabled={loading || !user}>
+              <Button type="submit" disabled={loading || !user || isUserLoading}>
                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit for Approval
               </Button>

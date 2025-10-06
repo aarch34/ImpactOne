@@ -1,16 +1,16 @@
-
 "use client";
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
 const AUTH_ROUTES = ['/login', '/register'];
 const APP_ROUTES_PREFIX = '/';
 
 export function Entry({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -18,7 +18,8 @@ export function Entry({ children }: { children: React.ReactNode }) {
   const isAppRoute = !isAuthRoute && pathname !== '/';
 
   useEffect(() => {
-    if (!isUserLoading) {
+    // Only perform redirects after auth state is fully loaded
+    if (!isUserLoading && auth) {
       if (user && isAuthRoute) {
         // Logged-in user on an auth page, redirect to dashboard
         router.replace('/dashboard');
@@ -27,10 +28,10 @@ export function Entry({ children }: { children: React.ReactNode }) {
         router.replace('/login');
       }
     }
-  }, [user, isUserLoading, router, isAuthRoute, isAppRoute]);
+  }, [user, isUserLoading, router, isAuthRoute, isAppRoute, auth]);
 
-  // Show a loader while checking auth status, especially on protected routes
-  if (isUserLoading && isAppRoute) {
+  // Show a loader while checking auth status for any route that requires auth
+  if (isUserLoading || !auth) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -38,6 +39,15 @@ export function Entry({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Render children immediately for public/auth routes or when auth check is complete
+  // Don't render protected content until auth is confirmed
+  if (isAppRoute && !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Render children when auth check is complete and appropriate
   return <>{children}</>;
 }

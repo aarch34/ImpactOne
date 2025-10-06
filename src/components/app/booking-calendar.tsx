@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase, useAuth } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Booking } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
@@ -13,26 +13,52 @@ import { format } from 'date-fns';
 export function BookingCalendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const firestore = useFirestore();
-  const { user } = useUser();
+  const auth = useAuth();
+  const { user } = useUser(auth);
 
+  // Check if user is admin
+  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('Admin');
+
+  // Updated query: Show approved bookings for all users, but admin can see all statuses
   const bookingsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // Admins see all bookings, users see only their own.
-    if (user.email === 'admin.impact@iceas.ac.in') {
+    
+    if (isAdmin) {
+      // Admin sees all bookings (all statuses)
+      return query(collection(firestore, "bookings"));
+    } else {
+      // Regular users see only approved bookings (from all users) + their own bookings (all statuses)
+      // This will show approved bookings as public calendar + their own pending/rejected
       return query(collection(firestore, "bookings"));
     }
-    return query(collection(firestore, "bookings"), where("requesterId", "==", user.uid));
-  }, [firestore, user]);
+  }, [firestore, user, isAdmin]);
 
-  const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
+  const { data: allBookings, isLoading } = useCollection<Booking>(bookingsQuery);
+
+  // Filter bookings based on user type
+  const filteredBookings = useMemo(() => {
+    if (!allBookings) return [];
+    
+    if (isAdmin) {
+      // Admin sees all bookings
+      return allBookings;
+    } else {
+      // Regular users see:
+      // 1. All approved bookings (to see resource availability)
+      // 2. Their own bookings (regardless of status)
+      return allBookings.filter(booking => 
+        booking.status === 'Approved' || booking.requesterId === user?.uid
+      );
+    }
+  }, [allBookings, isAdmin, user?.uid]);
 
   const events = useMemo(() => {
-    return bookings?.map(b => ({
+    return filteredBookings?.map(b => ({
         ...b,
         date: b.bookingDate.toDate(),
-        title: b.resourceName,
+        title: b.eventTitle, // Show event title instead of resource name
     })) || [];
-  }, [bookings]);
+  }, [filteredBookings]);
 
   const selectedDayEvents = date ? events.filter(e => e.date.toDateString() === date.toDateString()) : [];
 
@@ -49,10 +75,24 @@ export function BookingCalendar() {
     }
   };
 
+  // Enhanced calendar modifiers to show different types of bookings
+  const approvedEvents = events.filter(e => e.status === 'Approved');
+  const pendingEvents = events.filter(e => e.status === 'Pending');
+  const rejectedEvents = events.filter(e => e.status === 'Rejected');
+
   return (
     <div className="grid md:grid-cols-3 gap-6">
       <div className="md:col-span-2">
         <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Resource Calendar</CardTitle>
+            <CardDescription>
+              {isAdmin 
+                ? "All bookings and requests across the system" 
+                : "Approved bookings (public) and your requests"
+              }
+            </CardDescription>
+          </CardHeader>
           <CardContent className="p-2">
             <Calendar
                 mode="single"
@@ -60,16 +100,30 @@ export function BookingCalendar() {
                 onSelect={setDate}
                 className="rounded-md w-full"
                 modifiers={{
-                    approved: events.filter(e => e.status === 'Approved').map(e => e.date),
-                    pending: events.filter(e => e.status === 'Pending').map(e => e.date),
-                    rejected: events.filter(e => e.status === 'Rejected').map(e => e.date),
+                    approved: approvedEvents.map(e => e.date),
+                    pending: pendingEvents.map(e => e.date),
+                    rejected: rejectedEvents.map(e => e.date),
                 }}
                 modifiersClassNames={{
-                    approved: 'bg-primary/20',
-                    pending: 'bg-secondary text-secondary-foreground',
-                    rejected: 'bg-destructive/20',
+                    approved: 'bg-green-100 text-green-800 hover:bg-green-200',
+                    pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+                    rejected: 'bg-red-100 text-red-800 hover:bg-red-200',
                 }}
             />
+            <div className="flex gap-4 mt-4 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-green-100"></div>
+                <span className="text-muted-foreground">Approved</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-yellow-100"></div>
+                <span className="text-muted-foreground">Pending</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-red-100"></div>
+                <span className="text-muted-foreground">Rejected</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -77,7 +131,9 @@ export function BookingCalendar() {
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Events for {date ? format(date, 'PPP') : '...'}</CardTitle>
-            <CardDescription>Bookings on the selected date.</CardDescription>
+            <CardDescription>
+              {selectedDayEvents.length} booking{selectedDayEvents.length !== 1 ? 's' : ''} on this date
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
@@ -86,14 +142,24 @@ export function BookingCalendar() {
                 </div>
             ) : selectedDayEvents.length > 0 ? (
               selectedDayEvents.map((event) => (
-                <div key={event.id} className="flex items-center p-3 rounded-md border bg-card">
-                  <div className="flex-1">
-                    <p className="font-semibold">{event.title}</p>
-                    <p className="text-sm text-muted-foreground">{event.department}</p>
+                <div key={event.id} className="flex flex-col p-3 rounded-md border bg-card space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">{event.title}</h3>
+                    <Badge variant={getBadgeVariant(event.status)} className={event.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" : ""}>
+                      {event.status}
+                    </Badge>
                   </div>
-                  <Badge variant={getBadgeVariant(event.status)} className={event.status === "Approved" ? "bg-primary text-primary-foreground hover:bg-primary/80" : ""}>
-                    {event.status}
-                  </Badge>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>📍 {event.resourceName}</p>
+                    <p>👤 {event.requesterName}</p>
+                    <p>👥 {event.attendees} attendees</p>
+                    <p>🏢 {event.department}</p>
+                    {event.eventDescription && (
+                      <p className="border-t pt-2 mt-2">
+                        📝 {event.eventDescription}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (

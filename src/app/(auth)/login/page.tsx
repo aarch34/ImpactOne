@@ -69,9 +69,12 @@ export default function LoginPage() {
           title: 'Login Successful 🎉',
           description: 'Redirecting to your dashboard...',
         });
-
-        // 🚀 Instant redirect to dashboard
+        // ✅ Simple redirect without router.refresh()
+      setTimeout(() => {
         router.push('/dashboard');
+      }, 1000); // Give time for auth state to propagate
+
+       
       }
     } catch (e: any) {
       const errorMessage = handleFirebaseError(e.code || '');
@@ -131,7 +134,7 @@ export default function LoginPage() {
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-2">
-            Don’t have an account?{' '}
+            Don't have an account?{' '}
             <Link href="/register" className="underline hover:text-primary">
               Sign Up
             </Link>
