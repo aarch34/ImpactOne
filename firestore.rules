@@ -1,137 +1,87 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for user profiles and their bookings, while allowing public read access to venues and buses.
+ * @fileOverview
+ * This ruleset enforces a strict user-ownership model for user profiles and their bookings,
+ * while allowing public read access to venues and buses.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. The 'userId' path segment must match the 'id' field within the document.
- * - /venues/{venueId}: Stores venue information. These are public resources.
- * - /buses/{busId}: Stores bus information. These are public resources.
- * - /users/{userId}/bookings/{bookingId}: Stores booking requests made by each user. The 'userId' path segment must match the 'userId' field within the document.
+ * - /users/{userId}: Stores user profiles. Only the authenticated user can read/write their own profile.
+ * - /venues/{venueId}: Stores venue information. Public read access, but only the application can create, update, or delete.
+ * - /buses/{busId}: Stores bus information. Public read access, but only the application can create, update, or delete.
+ * - /users/{userId}/bookings/{bookingId}: Stores bookings made by a user. Only the user can manage their own bookings.
  *
  * Key Security Decisions:
- * - User listing is disabled to prevent unauthorized data enumeration.
- * - Venue and Bus data are publicly readable, but write access is not defined, so writes are denied.
- * - Bookings are owned by the user and stored in a subcollection under the user's profile.
- * - All write operations require authentication.
+ * - Users can only access their own data. No listing of all users is allowed.
+ * - Venue and Bus information is publicly readable but not writable by end-users.
+ * - Bookings are owned by the user who created them and stored under the user's profile.
  *
  * Denormalization for Authorization:
- * - Bookings are stored as subcollections under users to allow for easy path-based authorization checks.
+ * - Bookings are stored under /users/{userId}/bookings/{bookingId} to simplify ownership checks.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is signed in.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     /**
-     * @description Enforces strict user-ownership for user profiles. Only the authenticated user can read or write their own profile.
+     * @description Controls access to user profiles.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user creates their own profile with matching userId.
-     *   - auth.uid: "user123"
-     *   - request.resource.data.id: "user123"
-     * @allow (get, update, delete) - Authenticated user reads/updates/deletes their own profile with matching userId.
-     *   - auth.uid: "user123"
-     *   - resource.data.id: "user123"
-     * @deny (create, update, delete) - Any operation where the userId does not match the authenticated user's ID.
-     *   - auth.uid: "user123"
-     *   - request.resource.data.id: "differentUser"
-     * @deny (list) - Listing all users is not permitted.
-     * @principle Enforces document ownership for all operations and prevents unauthorized access to user data.
+     * @allow (get, create, update, delete) if the authenticated user's ID matches the userId.
+     * @deny (get, create, update, delete) if the authenticated user's ID does not match the userId.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      // Helper function to check if the authenticated user is the owner of the document.
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
-      // Helper function to check if the authenticated user is the owner of the document, and if the document exists.
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      // Read rules
       allow get: if isOwner(userId);
       allow list: if false;
-
-      // Write rules
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id; //Enforce immutability for id on update
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && resource.data.id == userId;
+      allow delete: if isOwner(userId) && resource.data.id == userId;
     }
 
     /**
-     * @description Allows public read access to venue information. Write access is denied.
+     * @description Controls access to venues.
      * @path /venues/{venueId}
-     * @allow (get, list) - Any user can read venue information.
-     * @deny (create, update, delete) - No one can create, update, or delete venue information through client-side rules.
-     * @principle Allows public read access to venues.
+     * @allow (get, list) Public read access.
+     * @deny (create, update, delete) No user write access is allowed.
+     * @principle Allows public read access to venue information, but restricts write access.
      */
     match /venues/{venueId} {
-      // Read rules: Allow anyone to read venue information
-      allow get: if true;
-      allow list: if true;
-
-      // Write rules: No one can create, update, or delete venue information
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to bus information. Write access is denied.
+     * @description Controls access to buses.
      * @path /buses/{busId}
-     * @allow (get, list) - Any user can read bus information.
-     * @deny (create, update, delete) - No one can create, update, or delete bus information through client-side rules.
-     * @principle Allows public read access to buses.
+     * @allow (get, list) Public read access.
+     * @deny (create, update, delete) No user write access is allowed.
+     * @principle Allows public read access to bus information, but restricts write access.
      */
     match /buses/{busId} {
-      // Read rules: Allow anyone to read bus information
-      allow get: if true;
-      allow list: if true;
-
-      // Write rules: No one can create, update, or delete bus information
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Enforces user-ownership for bookings.  Only the authenticated user can create, read, update, or delete their own bookings.
+     * @description Controls access to bookings made by a user.
      * @path /users/{userId}/bookings/{bookingId}
-     * @allow (create) - Authenticated user creates a booking under their profile, with matching userId in the path and the document.
-     *   - auth.uid: "user123"
-     *   - request.resource.data.userId: "user123"
-     * @allow (get, update, delete) - Authenticated user reads/updates/deletes their own booking with matching userId.
-     *   - auth.uid: "user123"
-     *   - resource.data.userId: "user123"
-     * @deny (create, update, delete) - Any operation where the userId does not match the authenticated user's ID.
-     *   - auth.uid: "user123"
-     *   - request.resource.data.userId: "differentUser"
-     * @allow (list) - Authenticated user can list their own bookings.
-     *   - auth.uid: "user123"
-     * @principle Enforces document ownership for all booking operations and prevents unauthorized access.
+     * @allow (get, create, update, delete, list) if the authenticated user's ID matches the userId.
+     * @deny (get, create, update, delete, list) if the authenticated user's ID does not match the userId.
+     * @principle Enforces document ownership for bookings.
      */
     match /users/{userId}/bookings/{bookingId} {
-      // Helper function to check if the authenticated user is the owner of the booking.
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
-
-      // Helper function to check if the authenticated user is the owner of the document, and if the document exists.
-      function isExistingOwner(userId) {
+       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
-
-      // Read rules
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-
-      // Write rules
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId; //Enforce immutability for userId on update
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
       allow delete: if isExistingOwner(userId);
     }
   }
