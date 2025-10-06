@@ -18,9 +18,9 @@ export default function DashboardPage() {
   const { user } = useUser();
 
   const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, `users/${user.uid}/bookings`));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
   
@@ -160,10 +160,14 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking) => {
+                      const getInitials = (name?: string | null) => {
+                        if (!name) return "A";
+                        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                      }
                       return (
                         <div className="flex items-center" key={booking.id}>
                           <Avatar className="h-9 w-9">
-                            <AvatarFallback>{booking.requesterName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>{getInitials(booking.requesterName)}</AvatarFallback>
                           </Avatar>
                           <div className="ml-4 space-y-1">
                             <p className="text-sm font-medium leading-none">{booking.requesterName}</p>
