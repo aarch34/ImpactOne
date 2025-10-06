@@ -51,7 +51,11 @@ export default function BookingsPage() {
     const resourceName = allResources.find(r => r.id === data.resourceId)?.name || 'Unknown Resource';
 
     try {
-      await addDoc(collection(firestore, "bookings"), {
+      // In a real app, user info would come from an auth hook, but for now we'll use a placeholder.
+      const user = { uid: 'anonymous-user' };
+      const bookingsCollectionRef = collection(firestore, `users/${user.uid}/bookings`);
+      
+      await addDoc(bookingsCollectionRef, {
         ...data,
         resourceName,
         bookingDate: Timestamp.fromDate(data.bookingDate),
@@ -60,6 +64,7 @@ export default function BookingsPage() {
         requesterId: "anonymous-user",
         requesterName: "Jane Doe",
       });
+
       toast({
         title: "Booking Request Submitted!",
         description: "Your request has been sent for approval.",

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2 } from "lucide-react";
-import { useCollection } from '@/firebase';
+import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Booking } from '@/lib/types';
@@ -13,13 +13,14 @@ import { format } from 'date-fns';
 
 export default function HistoryPage() {
     const firestore = useFirestore();
+    const { user } = useUser();
 
-    const bookingsQuery = useMemo(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'bookings'), orderBy('bookingDate', 'desc'));
-    }, [firestore]);
+    const bookingsQuery = useMemoFirebase(() => {
+        if (!firestore || !user) return null;
+        return query(collection(firestore, `users/${user.uid}/bookings`), orderBy('bookingDate', 'desc'));
+    }, [firestore, user]);
 
-    const { data: bookings, loading } = useCollection<Booking>(bookingsQuery);
+    const { data: bookings, isLoading: loading } = useCollection<Booking>(bookingsQuery);
 
     const getBadgeVariant = (status: string) => {
         switch (status) {
@@ -37,7 +38,7 @@ export default function HistoryPage() {
     const exportToCSV = () => {
         if (!bookings) return;
         const headers = ['ID', 'Resource', 'Department', 'Date', 'Status'];
-        const rows = bookings.map(b => [b.id, b.resourceName, b.department, format(b.bookingDate.toDate(), 'yyyy-MM-dd'), b.status].join(','));
+        const rows = bookings.map(b => [b.id, b.resourceName, b.department, b.bookingDate ? format(b.bookingDate.toDate(), 'yyyy-MM-dd') : 'N/A', b.status].join(','));
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -94,7 +95,7 @@ export default function HistoryPage() {
                                 <TableCell className="font-medium">{booking.id.substring(0,6).toUpperCase()}</TableCell>
                                 <TableCell>{booking.resourceName}</TableCell>
                                 <TableCell>{booking.department}</TableCell>
-                                <TableCell>{format(booking.bookingDate.toDate(), 'PP')}</TableCell>
+                                <TableCell>{booking.bookingDate ? format(booking.bookingDate.toDate(), 'PP') : 'N/A'}</TableCell>
                                 <TableCell>{booking.requesterName}</TableCell>
                                 <TableCell className="text-right">
                                     <Badge variant={getBadgeVariant(booking.status)}
