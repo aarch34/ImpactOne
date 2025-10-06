@@ -8,7 +8,6 @@ import { useAuth, useUser } from "@/firebase";
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Bell, LifeBuoy, LogOut, Settings, User as UserIcon, Loader2 } from "lucide-react"
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function UserNav() {
   const auth = useAuth();
@@ -37,8 +35,6 @@ export function UserNav() {
       console.error("Error signing out: ", error);
     }
   };
-
-  const userImage = PlaceHolderImages.find(p => p.id === 'user-avatar-main');
 
   const getInitials = (name?: string | null) => {
     if (!name) return "A";
@@ -59,7 +55,6 @@ export function UserNav() {
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10 border">
-                <AvatarImage src={userImage?.imageUrl} alt="User avatar" data-ai-hint={userImage?.imageHint} />
                 <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
             </Avatar>
             </Button>
