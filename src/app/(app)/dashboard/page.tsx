@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from 'react';
@@ -12,6 +13,7 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import type { Booking } from '@/lib/types';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
@@ -23,6 +25,8 @@ export default function DashboardPage() {
   }, [firestore, user]);
 
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
+  
+  const userAvatars = PlaceHolderImages.filter(p => p.id.startsWith('user-avatar-'));
 
   const dashboardStats = useMemo(() => {
     if (!bookings) {
@@ -159,21 +163,24 @@ export default function DashboardPage() {
                   <CardDescription>Latest booking requests.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking) => (
-                      <div className="flex items-center" key={booking.id}>
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={`https://picsum.photos/seed/${booking.requesterId}/40/40`} alt="Avatar" data-ai-hint="profile picture" />
-                          <AvatarFallback>{booking.requesterName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="ml-4 space-y-1">
-                          <p className="text-sm font-medium leading-none">{booking.requesterName}</p>
-                          <p className="text-sm text-muted-foreground">Booked {booking.resourceName}</p>
+                    {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking, index) => {
+                      const avatar = userAvatars[index % userAvatars.length];
+                      return (
+                        <div className="flex items-center" key={booking.id}>
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={avatar.imageUrl} alt="Avatar" data-ai-hint={avatar.imageHint} />
+                            <AvatarFallback>{booking.requesterName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="ml-4 space-y-1">
+                            <p className="text-sm font-medium leading-none">{booking.requesterName}</p>
+                            <p className="text-sm text-muted-foreground">Booked {booking.resourceName}</p>
+                          </div>
+                          <div className="ml-auto font-medium text-xs text-muted-foreground">
+                            {format(booking.bookingDate.toDate(), 'PP')}
+                          </div>
                         </div>
-                        <div className="ml-auto font-medium text-xs text-muted-foreground">
-                          {format(booking.bookingDate.toDate(), 'PP')}
-                        </div>
-                      </div>
-                    )) : (
+                      )
+                    }) : (
                       <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
                     )}
                 </CardContent>
@@ -185,3 +192,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
