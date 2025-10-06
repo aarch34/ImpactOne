@@ -1,3 +1,9 @@
+"use client"
+
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { useAuth, useUser } from "@/firebase";
+
 import {
   Avatar,
   AvatarFallback,
@@ -13,9 +19,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LifeBuoy, LogOut, Settings, User } from "lucide-react"
+import { Bell, LifeBuoy, LogOut, Settings, User as UserIcon, Loader2 } from "lucide-react"
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function UserNav() {
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
+
+  const userImage = PlaceHolderImages.find(p => p.id === 'user-avatar-main');
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  if (isUserLoading) {
+    return <Loader2 className="h-6 w-6 animate-spin text-primary" />
+  }
+
   return (
     <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
@@ -26,24 +57,24 @@ export function UserNav() {
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10 border">
-                <AvatarImage src="https://picsum.photos/seed/user/40/40" alt="@shadcn" data-ai-hint="profile picture" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={userImage?.imageUrl} alt="User avatar" data-ai-hint={userImage?.imageHint} />
+                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
             </Avatar>
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Jane Doe</p>
+                <p className="text-sm font-medium leading-none">{user?.displayName || 'Anonymous User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                jane.doe@impact.ac.in
+                {user?.email || 'No email provided'}
                 </p>
             </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
             <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
+                <UserIcon className="mr-2 h-4 w-4" />
                 <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
@@ -57,7 +88,7 @@ export function UserNav() {
                 <span>Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
             </DropdownMenuItem>
