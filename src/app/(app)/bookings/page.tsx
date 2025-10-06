@@ -10,12 +10,72 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { venues, buses } from "@/lib/data";
+import { venues, buses, departments } from "@/lib/data";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { useFirestore } from "@/firebase";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
+
+const bookingSchema = z.object({
+  resourceType: z.enum(["venue", "bus"], { required_error: "Please select a resource type." }),
+  resourceId: z.string().min(1, "Please select a resource."),
+  bookingDate: z.date({ required_error: "Please select a booking date." }),
+  attendees: z.coerce.number().min(1, "Number of attendees is required."),
+  eventTitle: z.string().min(1, "Event title is required."),
+  eventDescription: z.string().min(1, "Event description is required."),
+  department: z.string().min(1, "Please select your department."),
+});
+
+type BookingFormData = z.infer<typeof bookingSchema>;
 
 export default function BookingsPage() {
-  const [date, setDate] = useState<Date>();
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const form = useForm<BookingFormData>({
+    resolver: zodResolver(bookingSchema),
+  });
+
+  const resourceType = form.watch("resourceType");
+
+  const onSubmit = async (data: BookingFormData) => {
+    if (!firestore) return;
+    setLoading(true);
+
+    const allResources = [...venues, ...buses];
+    const resourceName = allResources.find(r => r.id === data.resourceId)?.name || 'Unknown Resource';
+
+    try {
+      await addDoc(collection(firestore, "bookings"), {
+        ...data,
+        resourceName,
+        bookingDate: Timestamp.fromDate(data.bookingDate),
+        status: "Pending",
+        // NOTE: In a real app, user info would come from an auth hook
+        requesterId: "anonymous-user",
+        requesterName: "Jane Doe",
+      });
+      toast({
+        title: "Booking Request Submitted!",
+        description: "Your request has been sent for approval.",
+      });
+      form.reset();
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "There was a problem with your request.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -28,65 +88,117 @@ export default function BookingsPage() {
           <CardTitle>Booking Form</CardTitle>
           <CardDescription>All requests are subject to approval by the department head.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6">
-          <div className="grid md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardContent className="grid gap-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Controller
+                name="resourceType"
+                control={form.control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="resource-type">Resource Type</Label>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger id="resource-type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="venue">Venue</SelectItem>
+                        <SelectItem value="bus">Bus</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.resourceType && <p className="text-sm font-medium text-destructive">{form.formState.errors.resourceType.message}</p>}
+                  </div>
+                )}
+              />
+
+              <Controller
+                name="resourceId"
+                control={form.control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="resource">Resource</Label>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!resourceType}>
+                      <SelectTrigger id="resource">
+                        <SelectValue placeholder="Select a resource" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {resourceType === 'venue' && venues.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                        {resourceType === 'bus' && buses.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                     {form.formState.errors.resourceId && <p className="text-sm font-medium text-destructive">{form.formState.errors.resourceId.message}</p>}
+                  </div>
+                )}
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+               <Controller
+                name="bookingDate"
+                control={form.control}
+                render={({ field }) => (
+                   <div className="space-y-2">
+                      <Label htmlFor="booking-date">Booking Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                      {form.formState.errors.bookingDate && <p className="text-sm font-medium text-destructive">{form.formState.errors.bookingDate.message}</p>}
+                   </div>
+                )}
+              />
+              
+              <div className="space-y-2">
+                <Label htmlFor="attendees">Number of Attendees</Label>
+                <Input id="attendees" type="number" placeholder="e.g., 50" {...form.register("attendees")} />
+                {form.formState.errors.attendees && <p className="text-sm font-medium text-destructive">{form.formState.errors.attendees.message}</p>}
+              </div>
+            </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="resource-type">Resource Type</Label>
-              <Select>
-                <SelectTrigger id="resource-type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="venue">Venue</SelectItem>
-                  <SelectItem value="bus">Bus</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="department">Department</Label>
+               <Controller
+                name="department"
+                control={form.control}
+                render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger id="department">
+                        <SelectValue placeholder="Select your department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                )}
+              />
+              {form.formState.errors.department && <p className="text-sm font-medium text-destructive">{form.formState.errors.department.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="event-title">Event Title</Label>
+              <Input id="event-title" placeholder="e.g., Guest Lecture on AI" {...form.register("eventTitle")} />
+              {form.formState.errors.eventTitle && <p className="text-sm font-medium text-destructive">{form.formState.errors.eventTitle.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="resource">Resource</Label>
-              <Select>
-                <SelectTrigger id="resource">
-                  <SelectValue placeholder="Select a resource" />
-                </SelectTrigger>
-                <SelectContent>
-                  {venues.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                  {buses.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="event-description">Event Description / Purpose</Label>
+              <Textarea id="event-description" placeholder="A brief description of the event." {...form.register("eventDescription")} />
+              {form.formState.errors.eventDescription && <p className="text-sm font-medium text-destructive">{form.formState.errors.eventDescription.message}</p>}
             </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="booking-date">Booking Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                </PopoverContent>
-              </Popover>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={loading}>
+                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit for Approval
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="attendees">Number of Attendees</Label>
-              <Input id="attendees" type="number" placeholder="e.g., 50" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="event-title">Event Title</Label>
-            <Input id="event-title" placeholder="e.g., Guest Lecture on AI" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="event-description">Event Description / Purpose</Label>
-            <Textarea id="event-description" placeholder="A brief description of the event." />
-          </div>
-          <div className="flex justify-end">
-            <Button>Submit for Approval</Button>
-          </div>
-        </CardContent>
+          </CardContent>
+        </form>
       </Card>
     </div>
   )

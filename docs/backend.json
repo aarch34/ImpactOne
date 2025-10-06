@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "A user's public profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "The URL of the user's profile photo."
+        }
+      }
+    },
+    "booking": {
+      "title": "Booking",
+      "description": "A booking for a campus resource.",
+      "type": "object",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The type of resource being booked (e.g., 'venue', 'bus')."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The ID of the specific resource being booked."
+        },
+        "resourceName": {
+          "type": "string",
+          "description": "The name of the specific resource being booked."
+        },
+        "bookingDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time of the booking."
+        },
+        "attendees": {
+          "type": "number",
+          "description": "The number of attendees for the event."
+        },
+        "eventTitle": {
+          "type": "string",
+          "description": "The title of the event."
+        },
+        "eventDescription": {
+          "type": "string",
+          "description": "The description or purpose of the event."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Approved",
+            "Rejected"
+          ],
+          "description": "The approval status of the booking."
+        },
+        "requesterId": {
+          "type": "string",
+          "description": "The UID of the user who made the booking request."
+        },
+        "requesterName": {
+          "type": "string",
+          "description": "The name of the user who made the booking request."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department making the booking."
+        }
+      },
+      "required": [
+        "resourceType",
+        "resourceId",
+        "resourceName",
+        "bookingDate",
+        "eventTitle",
+        "status",
+        "requesterId",
+        "requesterName"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/userProfile"
+      },
+      "description": "Stores public profile information for each user."
+    },
+    "/bookings": {
+      "schema": {
+        "$ref": "#/entities/booking"
+      },
+      "description": "Collection of all booking requests for campus resources."
+    }
+  }
+}
