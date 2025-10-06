@@ -73,7 +73,7 @@ export default function RegisterPage() {
         description: 'You have been successfully registered.',
       });
 
-      router.push('/dashboard');
+      // The auth listener in the main layout will handle the redirect.
     } catch (error: any) {
        if (error.code && error.code.startsWith('auth/')) {
         toast({
