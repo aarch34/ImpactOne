@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
@@ -18,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Briefcase } from 'lucide-react';
 import { departments } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Controller } from 'react-hook-form';
+
 
 const registerSchema = z.object({
   displayName: z.string().min(1, 'Full name is required.'),
@@ -31,7 +32,6 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -74,6 +74,7 @@ export default function RegisterPage() {
         title: 'Account Created',
         description: 'You have successfully signed up.',
       });
+      // The redirect is handled by the layout now.
       
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';

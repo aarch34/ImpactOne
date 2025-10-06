@@ -52,7 +52,7 @@ export default function LoginPage() {
         title: 'Login Successful',
         description: "Welcome back!",
       });
-      router.push('/dashboard');
+      // The redirect is handled by the layout now.
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
       setError(errorMessage);
