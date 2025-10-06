@@ -3,7 +3,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
+import { useAuth, useUser } from "@/firebase";
+import { signInAnonymously } from "firebase/auth";
 
 import { MainNav } from "@/components/app/main-nav";
 import { UserNav } from "@/components/app/user-nav";
@@ -17,25 +18,24 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push('/');
+        signInAnonymously(auth).catch((error) => {
+            console.error("Anonymous sign-in failed:", error);
+        });
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, auth]);
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
-  }
-  
-  if (!user) {
-    return null; // or a redirect, but the useEffect handles that.
   }
 
   return (

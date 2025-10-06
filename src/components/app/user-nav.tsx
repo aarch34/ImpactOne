@@ -1,3 +1,4 @@
+
 "use client"
 
 import { signOut } from "firebase/auth";
@@ -30,7 +31,7 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push('/');
+      // After signing out, the auth listener will handle anonymous sign-in
     } catch (error) {
       console.error("Error signing out: ", error);
     }
@@ -39,7 +40,7 @@ export function UserNav() {
   const userImage = PlaceHolderImages.find(p => p.id === 'user-avatar-main');
 
   const getInitials = (name?: string | null) => {
-    if (!name) return "U";
+    if (!name) return "A";
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
@@ -65,19 +66,19 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.displayName || 'Anonymous User'}</p>
+                <p className="text-sm font-medium leading-none">{user?.isAnonymous ? 'Anonymous User' : (user?.displayName || 'User')}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                {user?.email || 'No email provided'}
+                {user?.isAnonymous ? 'guest@impact.ac.in' : (user?.email || 'No email provided')}
                 </p>
             </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-            <DropdownMenuItem>
+            <DropdownMenuItem disabled={user?.isAnonymous}>
                 <UserIcon className="mr-2 h-4 w-4" />
                 <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem disabled={user?.isAnonymous}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
             </DropdownMenuItem>
@@ -88,7 +89,7 @@ export function UserNav() {
                 <span>Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" disabled={user?.isAnonymous}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
             </DropdownMenuItem>
