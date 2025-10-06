@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,9 +27,22 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { toast } = useToast();
-  const router = useRouter(); // ✅ Added router for redirection
+  const router = useRouter();
 
-  // ✅ Helper to show friendly Firebase error messages
+  // ✅ Check if user is already authenticated
+  useEffect(() => {
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is already logged in, redirect to dashboard
+        router.push('/dashboard');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, router]);
+
   const handleFirebaseError = (code: string) => {
     switch (code) {
       case 'auth/user-not-found':
@@ -63,17 +76,18 @@ export default function LoginPage() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      
+      // ✅ Wait for auth state to be set before redirecting
+      if (userCredential.user) {
+        toast({
+          title: 'Login Successful',
+          description: "Welcome back! Redirecting...",
+        });
 
-      toast({
-        title: 'Login Successful',
-        description: "Welcome back! Redirecting...",
-      });
-
-      // ✅ Redirect to dashboard after short delay
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1500);
+        // ✅ The central Entry component will handle the redirect. No need to push here.
+        // router.push('/dashboard');
+      }
 
     } catch (e: any) {
       const errorMessage = handleFirebaseError(e.code || '');

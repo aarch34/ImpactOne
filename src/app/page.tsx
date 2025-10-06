@@ -49,7 +49,7 @@ export default function HomePage() {
                 </div>
               </div>
               <img
-                src="https://picsum.photos/seed/impact/600/400"
+                src="https://imgs.search.brave.com/qCwf_AkjqcZzdIAIxVJc8rKCWfXUFS6kAdAPHjQl4BQ/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZS1zdGF0aWMuY29s/bGVnZWR1bmlhLmNv/bS9wdWJsaWMvcmV2/aWV3UGhvdG9zLzk0/MjU5Ny9pbmJvdW5k/NzM1NDUwMjI3Mjk5/OTc1NzAxLmpwZw"
                 width="600"
                 height="400"
                 alt="Hero"
