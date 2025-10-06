@@ -1,88 +1,147 @@
 /**
- * @fileOverview
- * This ruleset enforces a strict user-ownership model for user profiles and their bookings,
- * while allowing public read access to venues and buses.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the authenticated user can read/write their own profile.
- * - /venues/{venueId}: Stores venue information. Public read access, but only the application can create, update, or delete.
- * - /buses/{busId}: Stores bus information. Public read access, but only the application can create, update, or delete.
- * - /users/{userId}/bookings/{bookingId}: Stores bookings made by a user. Only the user can manage their own bookings.
- *
- * Key Security Decisions:
- * - Users can only access their own data. No listing of all users is allowed.
- * - Venue and Bus information is publicly readable but not writable by end-users.
- * - Bookings are owned by the user who created them and stored under the user's profile.
- *
- * Denormalization for Authorization:
- * - Bookings are stored under /users/{userId}/bookings/{bookingId} to simplify ownership checks.
+ * @description This ruleset enforces a strict user-ownership model for user profiles and bookings.
+ *  Venues and Buses are publically accessible. Only the admin (admin.impact@iceas.ac.in) can approve or reject the bookings.
+ * @dataStructure
+ *  - /users/{userId}: Stores user profiles, accessible only to the owner.
+ *  - /venues/{venueId}: Stores venue data, publicly readable.
+ *  - /buses/{busId}: Stores bus data, publicly readable.
+ *  - /users/{userId}/bookings/{bookingId}: Stores booking requests, accessible only to the owner and admin.
+ * @keySecurityDecisions
+ *  - Users can only read and write their own profile data.
+ *  - Listing all users is disallowed.
+ *  - Venues and Buses are publically readable.
+ *  - Only the admin can approve or reject the bookings.
+ *  - Bookings are owned by the user who created them.
+ * @denormalizationForAuthorization
+ *  - The 'Booking' entity contains a 'userId' field that must match the path parameter to enforce ownership.
+ * @structuralSegregation
+ *  - Private user data (profiles and bookings) is stored under the /users/{userId} path.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles.
+     * @description Defines if user is signed in
+     * @allow if the user is signed in
+     * @deny if the user is not signed in
+     * @principle Requires authentication for all operations.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Defines if user is owner
+     * @allow if the user is the owner
+     * @deny if the user is not the owner
+     * @principle Requires authentication for all operations.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Defines if user is the admin
+     * @allow if the user is the admin (admin.impact@iceas.ac.in)
+     * @deny if the user is not the admin
+     * @principle Requires authentication for all operations.
+     */
+    function isAdmin() {
+        return request.auth.token.email == 'admin.impact@iceas.ac.in';
+    }
+    /**
+     * @description Checks if the user is the owner and the resource exists.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+   /**
+     * @description Enforces that an update does not change the owner ID.
+     * @allow  if the user is updating their own document and not changing the owner ID.
+     * @deny  if the user is trying to change the owner ID during an update.
+     * @principle Protects against unauthorized changes to document ownership.
+     */
+    function isImmutableOwner(userId) {
+        return resource.data.id == userId;
+    }
+
+    /**
+     * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) if the authenticated user's ID matches the userId.
-     * @deny (get, create, update, delete) if the authenticated user's ID does not match the userId.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (get) request.auth.uid == userId - Allows a user to read their own profile.
+     * @allow (create) request.auth.uid == userId - Allows a user to create their own profile.
+     * @allow (update) request.auth.uid == userId - Allows a user to update their own profile.
+     * @deny (get) request.auth.uid != userId - Denies a user from reading another user's profile.
+     * @deny (create) request.auth.uid != userId - Denies a user from creating a profile with a different user ID.
+     * @deny (update) request.auth.uid != userId - Denies a user from updating another user's profile.
+     * @principle Enforces document ownership for reads and writes.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
+      //get, list
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource.data.id == userId;
-      allow delete: if isOwner(userId) && resource.data.id == userId;
+
+      //create, update, delete
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && isImmutableOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to venues.
+     * @description Rules for venues.
      * @path /venues/{venueId}
-     * @allow (get, list) Public read access.
-     * @deny (create, update, delete) No user write access is allowed.
-     * @principle Allows public read access to venue information, but restricts write access.
+     * @allow (get) true - Allows anyone to read venue data.
+     * @allow (list) true - Allows anyone to list venues.
+     * @deny (create) false - Denies anyone from creating venues (admin only).
+     * @deny (update) false - Denies anyone from updating venues (admin only).
+     * @deny (delete) false - Denies anyone from deleting venues (admin only).
+     * @principle Public read, owner-only write.
      */
     match /venues/{venueId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow get, list: if true;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to buses.
+     * @description Rules for buses.
      * @path /buses/{busId}
-     * @allow (get, list) Public read access.
-     * @deny (create, update, delete) No user write access is allowed.
-     * @principle Allows public read access to bus information, but restricts write access.
+     * @allow (get) true - Allows anyone to read bus data.
+     * @allow (list) true - Allows anyone to list buses.
+     * @deny (create) false - Denies anyone from creating buses (admin only).
+     * @deny (update) false - Denies anyone from updating buses (admin only).
+     * @deny (delete) false - Denies anyone from deleting buses (admin only).
+     * @principle Public read, owner-only write.
      */
     match /buses/{busId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow get, list: if true;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
 
     /**
-     * @description Controls access to bookings made by a user.
+     * @description Rules for bookings under a specific user.
      * @path /users/{userId}/bookings/{bookingId}
-     * @allow (get, create, update, delete, list) if the authenticated user's ID matches the userId.
-     * @deny (get, create, update, delete, list) if the authenticated user's ID does not match the userId.
-     * @principle Enforces document ownership for bookings.
+     * @allow (get) isOwner(userId) || isAdmin() - Allows the owner or admin to read the booking.
+     * @allow (list) isOwner(userId) - Allows the owner to list their bookings.
+     * @allow (create) isOwner(userId) && request.resource.data.userId == userId - Allows a user to create a booking under their ID, validating the userId field.
+     * @allow (update) (isOwner(userId) && resource.data.userId == userId) || isAdmin() - Allows the owner or admin to update the booking if the userId field matches and the resource exists.
+     * @allow (delete) (isOwner(userId) && resource.data.userId == userId) || isAdmin() - Allows the owner or admin to delete the booking if the userId field matches and the resource exists.
+     * @deny (get) !isOwner(userId) && !isAdmin() - Denies non-owners from reading the booking.
+     * @deny (create) request.resource.data.userId != userId - Denies creating a booking with a mismatched userId.
+     * @deny (update) resource.data.userId != userId && !isAdmin() - Denies updating a booking with a mismatched userId.
+     * @principle Enforces ownership for bookings and admin override.
      */
     match /users/{userId}/bookings/{bookingId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-       function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
+        allow get: if isOwner(userId) || isAdmin();
+        allow list: if isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if (isExistingOwner(userId) && resource.data.userId == userId) || isAdmin();
+        allow delete: if (isExistingOwner(userId) && resource.data.userId == userId) || isAdmin();
     }
   }
 }

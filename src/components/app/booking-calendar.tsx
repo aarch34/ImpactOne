@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Booking } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,7 +17,11 @@ export function BookingCalendar() {
 
   const bookingsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, `users/${user.uid}/bookings`));
+    // Admins see all bookings, users see only their own.
+    if (user.email === 'admin.impact@iceas.ac.in') {
+      return query(collection(firestore, "bookings"));
+    }
+    return query(collection(firestore, "bookings"), where("requesterId", "==", user.uid));
   }, [firestore, user]);
 
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);

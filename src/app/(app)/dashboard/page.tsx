@@ -10,7 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import type { Booking } from '@/lib/types';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 export default function DashboardPage() {
@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
   const bookingsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, `users/${user.uid}/bookings`));
+    return query(collection(firestore, "bookings"), where("requesterId", "==", user.uid));
   }, [firestore, user?.uid]);
 
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);

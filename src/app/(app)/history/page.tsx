@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2 } from "lucide-react";
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Booking } from '@/lib/types';
 import { format } from 'date-fns';
@@ -17,7 +17,13 @@ export default function HistoryPage() {
 
     const bookingsQuery = useMemoFirebase(() => {
         if (!firestore || !user) return null;
-        return query(collection(firestore, `users/${user.uid}/bookings`), orderBy('bookingDate', 'desc'));
+        // Admins see all bookings, users see only their own.
+        const baseQuery = query(collection(firestore, `bookings`), orderBy('bookingDate', 'desc'));
+        if (user.email === 'admin.impact@iceas.ac.in') {
+            return baseQuery;
+        }
+        return query(baseQuery, where("requesterId", "==", user.uid));
+
     }, [firestore, user]);
 
     const { data: bookings, isLoading: loading } = useCollection<Booking>(bookingsQuery);

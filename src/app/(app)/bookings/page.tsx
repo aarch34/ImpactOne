@@ -51,7 +51,7 @@ export default function BookingsPage() {
     const allResources = [...venues, ...buses];
     const resourceName = allResources.find(r => r.id === data.resourceId)?.name || 'Unknown Resource';
 
-    const bookingsCollectionRef = collection(firestore, `users/${user.uid}/bookings`);
+    const bookingsCollectionRef = collection(firestore, "bookings");
     
     const newBookingData = {
       ...data,

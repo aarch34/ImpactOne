@@ -79,9 +79,9 @@
           "type": "string",
           "description": "Unique identifier for the booking."
         },
-        "userId": {
+        "requesterId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Booking)"
+          "description": "The ID of the user who made the booking."
         },
         "venueId": {
           "type": "string",
@@ -108,7 +108,7 @@
       },
       "required": [
         "id",
-        "userId",
+        "requesterId",
         "venueId",
         "startTime",
         "endTime",
@@ -206,18 +206,14 @@
         }
       },
       {
-        "path": "/users/{userId}/bookings/{bookingId}",
+        "path": "/bookings/{bookingId}",
         "definition": {
           "entityName": "Booking",
           "schema": {
             "$ref": "#/backend/entities/Booking"
           },
-          "description": "Stores booking requests made by each user. Includes denormalized data to avoid authorization `get()` calls. The 'userId' field is used for ownership checks in security rules.",
+          "description": "Stores all booking requests in a single root-level collection. This allows admins to easily query and manage all bookings. The 'requesterId' field is used for ownership checks in security rules.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user who made the booking."
-            },
             {
               "name": "bookingId",
               "description": "The unique identifier for the booking."
@@ -226,6 +222,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability, aligning with the specified principles. User data is stored in a dedicated collection (`users`) using the user's UID as the document ID, enabling path-based ownership for private data. Venue and Bus data are stored in root-level collections (`venues` and `buses`) since they are global resources. Bookings are stored as subcollections under the respective user document (`/users/{userId}/bookings/{bookingId}`), enforcing a clear ownership model.  \n\nAuthorization Independence is achieved by storing all necessary authorization information directly within the booking documents. For example, if certain venue bookings require departmental approval, the relevant department information could be denormalized into the booking document itself. The structure facilitates secure `list` operations (QAPs) by segregating data based on access needs and leveraging path-based ownership for filtering."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User data is stored in a dedicated collection (`users`). Venue and Bus data are stored in root-level collections (`venues` and `buses`). Bookings are now stored in a single root-level collection (`bookings`) to allow for global queries by an admin. Each booking contains a `requesterId` to link back to the user and enforce ownership-based security rules for non-admin users."
   }
 }

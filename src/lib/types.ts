@@ -14,3 +14,7 @@ export type Booking = {
   requesterName: string;
   department: string;
 };
+
+export type AdminBooking = Booking & {
+  // Potentially add admin-specific fields later if needed
+};
