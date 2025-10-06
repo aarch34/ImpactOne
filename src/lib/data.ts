@@ -12,5 +12,4 @@ export const venues = [
 
 export const buses = [
   { id: 'bus-1', name: 'Bus 1', capacity: 45, facilities: ['A/C'] },
-  { id: 'bus-2', name: 'Bus 2', capacity: 45, facilities: ['A/C'] },
 ];
