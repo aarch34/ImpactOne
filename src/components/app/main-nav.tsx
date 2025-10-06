@@ -20,16 +20,17 @@ export function MainNav() {
     <SidebarMenu>
       {links.map((link) => (
         <SidebarMenuItem key={link.href}>
-          <Link href={link.href} legacyBehavior passHref>
-            <SidebarMenuButton
-              isActive={pathname === link.href}
-              tooltip={link.label}
-              className="justify-start"
-            >
+          <SidebarMenuButton
+            asChild
+            isActive={pathname === link.href}
+            tooltip={link.label}
+            className="justify-start"
+          >
+            <Link href={link.href}>
               <link.icon className="size-5" />
               <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
-            </SidebarMenuButton>
-          </Link>
+            </Link>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
