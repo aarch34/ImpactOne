@@ -2,6 +2,7 @@
 "use client"
 
 import { signOut } from "firebase/auth";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@/firebase";
 
@@ -70,9 +71,11 @@ export function UserNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-            <DropdownMenuItem disabled={user?.isAnonymous}>
-                <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+             <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/profile">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
             </DropdownMenuItem>
             <DropdownMenuItem disabled={user?.isAnonymous}>
                 <Settings className="mr-2 h-4 w-4" />

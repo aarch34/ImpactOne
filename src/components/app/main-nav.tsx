@@ -1,9 +1,10 @@
+
 "use client";
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, CalendarPlus, History, Bot } from "lucide-react";
+import { LayoutDashboard, Calendar, CalendarPlus, History, Bot, User } from "lucide-react";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -11,6 +12,7 @@ const links = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/history", label: "History", icon: History },
   { href: "/recommender", label: "AI Recommender", icon: Bot },
+  { href: "/profile", label: "Profile", icon: User },
 ];
 
 export function MainNav() {
