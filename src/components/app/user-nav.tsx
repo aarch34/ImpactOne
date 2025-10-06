@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LifeBuoy, LogOut, Settings, User as UserIcon, Loader2 } from "lucide-react"
+import { Bell, LifeBuoy, LogOut, User as UserIcon, Loader2 } from "lucide-react"
 
 export function UserNav() {
   const auth = useAuth();
@@ -76,10 +76,6 @@ export function UserNav() {
                   <UserIcon className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={user?.isAnonymous}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
             </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
