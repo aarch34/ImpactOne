@@ -2,8 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useAuth, useUser } from '@/firebase';
-import { updateProfile } from 'firebase/auth';
+import { useUser } from '@clerk/nextjs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,7 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const profileSchema = z.object({
-  displayName: z.string().min(1, 'Display name is required.'),
+  firstName: z.string().min(1, 'First name is required.'),
+  lastName: z.string().min(1, 'Last name is required.'),
   email: z.string().email(),
 });
 
@@ -23,14 +23,14 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: '',
+      firstName: '',
+      lastName: '',
       email: '',
     },
   });
@@ -38,28 +38,27 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       form.reset({
-        displayName: user.displayName || '',
-        email: user.email || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.primaryEmailAddress?.emailAddress || '',
       });
     }
   }, [user, form]);
 
   const onSubmit = async (data: ProfileFormData) => {
-    if (!auth?.currentUser) return;
+    if (!user) return;
 
     setLoading(true);
     try {
-      await updateProfile(auth.currentUser, {
-        displayName: data.displayName,
+      await user.update({
+        firstName: data.firstName,
+        lastName: data.lastName,
       });
 
       toast({
         title: 'Profile Updated',
         description: 'Your profile has been updated successfully.',
       });
-       
-       // Force a full page reload to ensure user state is refreshed everywhere.
-       window.location.reload();
 
     } catch (error) {
       toast({
@@ -71,14 +70,14 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
-  
-    if (isUserLoading) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        )
-    }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -90,13 +89,18 @@ export default function ProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle>Your Information</CardTitle>
-            <CardDescription>Update your display name and view your email.</CardDescription>
+            <CardDescription>Update your name and view your email.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input id="displayName" {...form.register('displayName')} />
-              {form.formState.errors.displayName && <p className="text-sm font-medium text-destructive">{form.formState.errors.displayName.message}</p>}
+              <Label htmlFor="firstName">First Name</Label>
+              <Input id="firstName" {...form.register('firstName')} />
+              {form.formState.errors.firstName && <p className="text-sm font-medium text-destructive">{form.formState.errors.firstName.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input id="lastName" {...form.register('lastName')} />
+              {form.formState.errors.lastName && <p className="text-sm font-medium text-destructive">{form.formState.errors.lastName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

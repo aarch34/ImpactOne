@@ -1,44 +1,47 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { useCollection, useFirestore, useUser, useMemoFirebase, useAuth } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { Booking } from '@/lib/types';
+import { useUser } from '@clerk/nextjs';
+import { supabase, type Booking } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function BookingCalendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const firestore = useFirestore();
-  const auth = useAuth();
-  const { user } = useUser(auth);
+  const { user } = useUser();
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check if user is admin
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('Admin');
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const isAdmin = userEmail === 'thejaswinp6@gmail.com';
 
-  // Updated query: Show approved bookings for all users, but admin can see all statuses
-  const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    
-    if (isAdmin) {
-      // Admin sees all bookings (all statuses)
-      return query(collection(firestore, "bookings"));
-    } else {
-      // Regular users see only approved bookings (from all users) + their own bookings (all statuses)
-      // This will show approved bookings as public calendar + their own pending/rejected
-      return query(collection(firestore, "bookings"));
+  // Fetch bookings from Supabase
+  useEffect(() => {
+    async function fetchBookings() {
+      if (!user) return;
+
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*');
+
+      if (data) {
+        setAllBookings(data);
+      }
+      setIsLoading(false);
     }
-  }, [firestore, user, isAdmin]);
 
-  const { data: allBookings, isLoading } = useCollection<Booking>(bookingsQuery);
+    fetchBookings();
+  }, [user]);
 
   // Filter bookings based on user type
   const filteredBookings = useMemo(() => {
     if (!allBookings) return [];
-    
+
     if (isAdmin) {
       // Admin sees all bookings
       return allBookings;
@@ -46,17 +49,17 @@ export function BookingCalendar() {
       // Regular users see:
       // 1. All approved bookings (to see resource availability)
       // 2. Their own bookings (regardless of status)
-      return allBookings.filter(booking => 
-        booking.status === 'Approved' || booking.requesterId === user?.uid
+      return allBookings.filter(booking =>
+        booking.status === 'Approved' || booking.requester_id === user?.id
       );
     }
-  }, [allBookings, isAdmin, user?.uid]);
+  }, [allBookings, isAdmin, user?.id]);
 
   const events = useMemo(() => {
     return filteredBookings?.map(b => ({
-        ...b,
-        date: b.bookingDate.toDate(),
-        title: b.eventTitle, // Show event title instead of resource name
+      ...b,
+      date: new Date(b.booking_date),
+      title: b.event_title, // Show event title instead of resource name
     })) || [];
   }, [filteredBookings]);
 
@@ -64,14 +67,14 @@ export function BookingCalendar() {
 
   const getBadgeVariant = (status: string) => {
     switch (status) {
-        case 'Approved':
-            return 'default';
-        case 'Pending':
-            return 'secondary';
-        case 'Rejected':
-            return 'destructive';
-        default:
-            return 'outline';
+      case 'Approved':
+        return 'default';
+      case 'Pending':
+        return 'secondary';
+      case 'Rejected':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
@@ -87,28 +90,28 @@ export function BookingCalendar() {
           <CardHeader>
             <CardTitle className="font-headline">Resource Calendar</CardTitle>
             <CardDescription>
-              {isAdmin 
-                ? "All bookings and requests across the system" 
+              {isAdmin
+                ? "All bookings and requests across the system"
                 : "Approved bookings (public) and your requests"
               }
             </CardDescription>
           </CardHeader>
           <CardContent className="p-2">
             <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md w-full"
-                modifiers={{
-                    approved: approvedEvents.map(e => e.date),
-                    pending: pendingEvents.map(e => e.date),
-                    rejected: rejectedEvents.map(e => e.date),
-                }}
-                modifiersClassNames={{
-                    approved: 'bg-green-100 text-green-800 hover:bg-green-200',
-                    pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-                    rejected: 'bg-red-100 text-red-800 hover:bg-red-200',
-                }}
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md w-full"
+              modifiers={{
+                approved: approvedEvents.map(e => e.date),
+                pending: pendingEvents.map(e => e.date),
+                rejected: rejectedEvents.map(e => e.date),
+              }}
+              modifiersClassNames={{
+                approved: 'bg-green-100 text-green-800 hover:bg-green-200',
+                pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+                rejected: 'bg-red-100 text-red-800 hover:bg-red-200',
+              }}
             />
             <div className="flex gap-4 mt-4 text-xs">
               <div className="flex items-center gap-1">
@@ -137,9 +140,9 @@ export function BookingCalendar() {
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
-                <div className="flex justify-center items-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
+              <div className="flex justify-center items-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
             ) : selectedDayEvents.length > 0 ? (
               selectedDayEvents.map((event) => (
                 <div key={event.id} className="flex flex-col p-3 rounded-md border bg-card space-y-2">
@@ -149,14 +152,15 @@ export function BookingCalendar() {
                       {event.status}
                     </Badge>
                   </div>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>📍 {event.resourceName}</p>
-                    <p>👤 {event.requesterName}</p>
-                    <p>👥 {event.attendees} attendees</p>
-                    <p>🏢 {event.department}</p>
-                    {event.eventDescription && (
-                      <p className="border-t pt-2 mt-2">
-                        📝 {event.eventDescription}
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Resource:</strong> {event.resource_name}</p>
+                    <p><strong>Requester:</strong> {event.requester_name}</p>
+                    <p><strong>Attendees:</strong> {event.attendees}</p>
+                    {event.event_description && (
+                      <p className="text-muted-foreground">
+                        {event.event_description?.length > 100
+                          ? `${event.event_description.substring(0, 100)}...`
+                          : event.event_description}
                       </p>
                     )}
                   </div>

@@ -5,28 +5,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2, AlertTriangle } from "lucide-react";
-import { useUser, useAuth, useFirestore } from '@/firebase';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
-import type { Booking } from '@/lib/types';
+import { useUser } from '@clerk/nextjs';
+import { supabase, type Booking } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 
 export default function HistoryPage() {
-    const firestore = useFirestore();
-    const auth = useAuth();
-    const { user } = useUser(auth);
-    
+    const { user, isLoaded } = useUser();
+
     // Local state for bookings
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Check if user is admin
-    const isAdmin = user?.email?.includes('admin') || user?.email?.includes('Admin');
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
+    const isAdmin = userEmail === 'thejaswinp6@gmail.com';
 
-    // Fetch bookings manually to avoid permission issues
+    // Fetch bookings from Supabase
     useEffect(() => {
         async function fetchBookings() {
-            if (!firestore || !user) {
+            if (!user) {
                 setLoading(false);
                 return;
             }
@@ -34,74 +32,33 @@ export default function HistoryPage() {
             try {
                 setLoading(true);
                 setError(null);
-                
-                // Try different approaches based on user type
-                let bookingsSnapshot;
-                
-                try {
-                    if (isAdmin) {
-                        // Admin: try to get all bookings
-                        const allBookingsRef = collection(firestore, "bookings");
-                        bookingsSnapshot = await getDocs(allBookingsRef);
-                    } else {
-                        // Regular user: try to get only their bookings
-                        const userBookingsRef = query(
-                            collection(firestore, "bookings"), 
-                            where("requesterId", "==", user.uid)
-                        );
-                        bookingsSnapshot = await getDocs(userBookingsRef);
-                    }
-                } catch (permissionError) {
-                    // If admin query fails, try simple collection query
-                    console.warn('Admin query failed, trying simple query:', permissionError);
-                    const simpleRef = collection(firestore, "bookings");
-                    bookingsSnapshot = await getDocs(simpleRef);
-                }
 
-                const fetchedBookings: Booking[] = [];
-                bookingsSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const booking = {
-                        id: doc.id,
-                        ...data,
-                    } as Booking;
-                    fetchedBookings.push(booking);
-                });
+                let query = supabase.from('bookings').select('*').order('booking_date', { ascending: false });
 
-                // Client-side filtering and sorting
-                let filteredBookings = fetchedBookings;
-                
-                // Filter for non-admin users
                 if (!isAdmin) {
-                    filteredBookings = fetchedBookings.filter(booking => 
-                        booking.requesterId === user.uid
-                    );
+                    query = query.eq('requester_id', user.id);
                 }
 
-                // Sort by booking date (newest first)
-                filteredBookings.sort((a, b) => {
-                    const dateA = a.bookingDate?.toDate?.() || new Date(0);
-                    const dateB = b.bookingDate?.toDate?.() || new Date(0);
-                    return dateB.getTime() - dateA.getTime();
-                });
+                const { data, error: supabaseError } = await query;
 
-                setBookings(filteredBookings);
-                
+                if (supabaseError) {
+                    throw supabaseError;
+                }
+
+                setBookings(data || []);
             } catch (err) {
                 console.error('Error fetching bookings:', err);
                 setError(`Failed to load booking history: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                setBookings([]);
             } finally {
                 setLoading(false);
             }
         }
 
-        // Only fetch if user is loaded
-        if (user) {
+        if (isLoaded) {
             fetchBookings();
-        } else if (!loading && !user) {
-            setLoading(false);
         }
-    }, [firestore, user, isAdmin]);
+    }, [user, isAdmin, isLoaded]);
 
     const getBadgeVariant = (status: string) => {
         switch (status) {
@@ -118,22 +75,22 @@ export default function HistoryPage() {
 
     const exportToCSV = () => {
         if (!bookings || bookings.length === 0) return;
-        
+
         const headers = ['ID', 'Event Title', 'Resource', 'Department', 'Date', 'Requester', 'Status', 'Attendees'];
         const csvContent = [
             headers.join(','),
             ...bookings.map(booking => [
                 booking.id,
-                `"${booking.eventTitle || 'N/A'}"`,
-                `"${booking.resourceName || 'N/A'}"`,
+                `"${booking.event_title || 'N/A'}"`,
+                `"${booking.resource_name || 'N/A'}"`,
                 `"${booking.department || 'N/A'}"`,
-                booking.bookingDate ? format(booking.bookingDate.toDate(), 'yyyy-MM-dd') : 'N/A',
-                `"${booking.requesterName || 'N/A'}"`,
+                booking.booking_date ? format(new Date(booking.booking_date), 'yyyy-MM-dd') : 'N/A',
+                `"${booking.requester_name || 'N/A'}"`,
                 booking.status || 'N/A',
                 booking.attendees || 0
             ].join(','))
         ].join('\n');
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -158,8 +115,8 @@ export default function HistoryPage() {
                 <div>
                     <h1 className="text-3xl font-bold font-headline tracking-tight">Booking History</h1>
                     <p className="text-muted-foreground">
-                        {isAdmin 
-                            ? 'A log of all past and current booking requests.' 
+                        {isAdmin
+                            ? 'A log of all past and current booking requests.'
                             : 'A log of your past and current booking requests.'
                         }
                     </p>
@@ -178,9 +135,9 @@ export default function HistoryPage() {
                         <div className="flex-1">
                             <h3 className="font-medium text-red-800">Unable to load booking history</h3>
                             <p className="text-sm text-red-700 mt-1">{error}</p>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={retryFetch}
                                 className="mt-2"
                             >
@@ -190,7 +147,7 @@ export default function HistoryPage() {
                     </div>
                 </div>
             )}
-            
+
             <div className="border rounded-lg bg-card">
                 <Table>
                     <TableHeader>
@@ -207,7 +164,7 @@ export default function HistoryPage() {
                     </TableHeader>
                     <TableBody>
                         {loading && (
-                           <TableRow>
+                            <TableRow>
                                 <TableCell colSpan={isAdmin ? 8 : 7} className="text-center">
                                     <div className="flex justify-center items-center p-8">
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -226,22 +183,22 @@ export default function HistoryPage() {
                         {!loading && !error && bookings?.map((booking) => (
                             <TableRow key={booking.id}>
                                 <TableCell className="font-mono text-xs font-medium">
-                                    {booking.id.substring(0,8).toUpperCase()}
+                                    {booking.id.substring(0, 8).toUpperCase()}
                                 </TableCell>
                                 <TableCell className="font-medium">
-                                    {booking.eventTitle || 'N/A'}
+                                    {booking.event_title || 'N/A'}
                                 </TableCell>
-                                <TableCell>{booking.resourceName || 'N/A'}</TableCell>
+                                <TableCell>{booking.resource_name || 'N/A'}</TableCell>
                                 <TableCell>{booking.department || 'N/A'}</TableCell>
                                 <TableCell>
-                                    {booking.bookingDate ? format(booking.bookingDate.toDate(), 'MMM dd, yyyy') : 'N/A'}
+                                    {booking.booking_date ? format(new Date(booking.booking_date), 'MMM dd, yyyy') : 'N/A'}
                                 </TableCell>
                                 {isAdmin && (
-                                    <TableCell>{booking.requesterName || 'N/A'}</TableCell>
+                                    <TableCell>{booking.requester_name || 'N/A'}</TableCell>
                                 )}
                                 <TableCell>{booking.attendees || 0}</TableCell>
                                 <TableCell className="text-right">
-                                    <Badge 
+                                    <Badge
                                         variant={getBadgeVariant(booking.status)}
                                         className={booking.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" : ""}
                                     >
@@ -253,7 +210,7 @@ export default function HistoryPage() {
                     </TableBody>
                 </Table>
             </div>
-            
+
             {/* Summary Stats - only show if we have data and no errors */}
             {!loading && !error && bookings && bookings.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

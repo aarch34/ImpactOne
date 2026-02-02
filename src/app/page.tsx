@@ -1,10 +1,41 @@
+'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, Bot, CalendarCheck, ShieldCheck } from "lucide-react";
+import { Briefcase, Bot, CalendarCheck, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
+  const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.push('/dashboard');
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  // Show loading while checking auth
+  if (!isLoaded) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Don't show landing page if user is signed in (will redirect)
+  if (isSignedIn) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background border-b">
@@ -73,31 +104,31 @@ export default function HomePage() {
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 mt-12">
               <Card>
                 <CardHeader className="flex-row items-center gap-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
-                        <Bot className="w-6 h-6 text-primary" />
-                    </div>
+                  <div className="bg-primary/10 p-3 rounded-full">
+                    <Bot className="w-6 h-6 text-primary" />
+                  </div>
                   <CardTitle>Smart Venue Recommender</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">Let our AI assistant help you find the perfect venue for your event based on your specific requirements, saving you time and effort.</p>
                 </CardContent>
               </Card>
-               <Card>
+              <Card>
                 <CardHeader className="flex-row items-center gap-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
-                        <CalendarCheck className="w-6 h-6 text-primary" />
-                    </div>
+                  <div className="bg-primary/10 p-3 rounded-full">
+                    <CalendarCheck className="w-6 h-6 text-primary" />
+                  </div>
                   <CardTitle>Effortless Booking</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">Book venues or buses in just a few clicks through our intuitive interface. Track your booking status in real-time from your dashboard.</p>
                 </CardContent>
               </Card>
-               <Card>
+              <Card>
                 <CardHeader className="flex-row items-center gap-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
-                        <ShieldCheck className="w-6 h-6 text-primary" />
-                    </div>
+                  <div className="bg-primary/10 p-3 rounded-full">
+                    <ShieldCheck className="w-6 h-6 text-primary" />
+                  </div>
                   <CardTitle>Centralized Admin Oversight</CardTitle>
                 </CardHeader>
                 <CardContent>

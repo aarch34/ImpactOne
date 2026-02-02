@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,36 +8,48 @@ import { Activity, BookOpenCheck, CalendarCheck, Clock, Loader2 } from "lucide-r
 import { departments, venues, buses } from "@/lib/data";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { useCollection, useFirestore, useUser, useMemoFirebase, useAuth } from '@/firebase';
-import type { Booking } from '@/lib/types';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser } from '@clerk/nextjs';
+import { supabase, type Booking } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 
 export default function DashboardPage() {
-  const firestore = useFirestore();
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, isLoaded } = useUser();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
 
   // ✅ Check if user is admin
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('Admin');
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const isAdmin = userEmail === 'thejaswinp6@gmail.com';
 
-  // ✅ Create different queries for admin vs regular users
-  const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    
-    if (isAdmin) {
-      // Admin sees all bookings
-      return query(collection(firestore, "bookings"));
-    } else {
-      // Regular users see only their own bookings
-      return query(collection(firestore, "bookings"), where("requesterId", "==", user.uid));
+  // Fetch bookings from Supabase
+  useEffect(() => {
+    async function fetchBookings() {
+      if (!user?.id) return;
+
+      setBookingsLoading(true);
+      let query = supabase.from('bookings').select('*');
+
+      if (!isAdmin) {
+        query = query.eq('requester_id', user.id);
+      }
+
+      const { data, error } = await query;
+      if (data) {
+        setBookings(data);
+      } else if (error) {
+        console.error("Error fetching bookings:", error);
+        setBookings([]); // Ensure bookings is an empty array on error
+      }
+      setBookingsLoading(false);
     }
-  }, [firestore, user?.uid, isAdmin]);
 
-  const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsQuery);
-  
+    if (isLoaded) {
+      fetchBookings();
+    }
+  }, [user?.id, isAdmin, isLoaded]);
+
   const dashboardStats = useMemo(() => {
-    if (!bookings) {
+    if (!bookings) { // This condition will now always be false as bookings is initialized to []
       return {
         totalBookings: 0,
         upcomingEvents: 0,
@@ -52,11 +64,11 @@ export default function DashboardPage() {
     today.setHours(0, 0, 0, 0);
 
     // ✅ For admin, show all pending requests. For users, show their approved events
-    const upcomingEvents = bookings.filter(b => b.status === 'Approved' && b.bookingDate.toDate() >= today).length;
+    const upcomingEvents = bookings.filter(b => b.status === 'Approved' && new Date(b.booking_date) >= today).length;
     const pendingRequests = bookings.filter(b => b.status === 'Pending').length;
 
     const resourceUsage = bookings.reduce((acc, booking) => {
-      const name = booking.resourceName;
+      const name = booking.resource_name;
       if (!acc[name]) {
         acc[name] = 0;
       }
@@ -65,10 +77,10 @@ export default function DashboardPage() {
     }, {} as Record<string, number>);
 
     const chartData = Object.entries(resourceUsage).map(([name, total]) => ({ name, total }));
-    
+
     const recentActivity = [...bookings]
-        .sort((a, b) => b.bookingDate.toMillis() - a.bookingDate.toMillis())
-        .slice(0, 3);
+      .sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime())
+      .slice(0, 3);
 
     return {
       totalBookings: bookings.length,
@@ -81,7 +93,7 @@ export default function DashboardPage() {
   }, [bookings]);
 
   // Show loading while user is loading or bookings are loading (but we have user)
-  if (isUserLoading) {
+  if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -119,7 +131,7 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
-      
+
       <Tabs defaultValue={departments[0].id}>
         <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 md:w-max">
           {departments.map((dept) => (
@@ -196,37 +208,37 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
               <Card className="lg:col-span-3">
-                 <CardHeader>
+                <CardHeader>
                   <CardTitle className="font-headline">Recent Activity</CardTitle>
                   <CardDescription>
                     {isAdmin ? 'Latest booking requests from all users.' : 'Your latest booking requests.'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking) => {
-                      const getInitials = (name?: string | null) => {
-                        if (!name) return "A";
-                        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                      }
-                      return (
-                        <div className="flex items-center" key={booking.id}>
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback>{getInitials(booking.requesterName)}</AvatarFallback>
-                          </Avatar>
-                          <div className="ml-4 space-y-1">
-                            <p className="text-sm font-medium leading-none">{booking.requesterName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Booked {booking.resourceName} • {booking.status}
-                            </p>
-                          </div>
-                          <div className="ml-auto font-medium text-xs text-muted-foreground">
-                            {format(booking.bookingDate.toDate(), 'PP')}
-                          </div>
+                  {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking) => {
+                    const getInitials = (name?: string | null) => {
+                      if (!name) return "A";
+                      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                    }
+                    return (
+                      <div className="flex items-center" key={booking.id}>
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback>{getInitials(booking.requester_name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="ml-4 space-y-1">
+                          <p className="text-sm font-medium leading-none">{booking.requester_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Booked {booking.resource_name} • {booking.status}
+                          </p>
                         </div>
-                      )
-                    }) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
-                    )}
+                        <div className="ml-auto font-medium text-xs text-muted-foreground">
+                          {format(new Date(booking.booking_date), 'PP')}
+                        </div>
+                      </div>
+                    )
+                  }) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

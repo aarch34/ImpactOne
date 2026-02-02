@@ -17,8 +17,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useUser, useAuth, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { useUser } from '@clerk/nextjs';
+import { supabase } from "@/lib/supabase/client";
 
 const bookingSchema = z.object({
   resourceType: z.enum(["venue", "bus"], { required_error: "Please select a resource type." }),
@@ -35,9 +35,7 @@ type BookingFormData = z.infer<typeof bookingSchema>;
 export default function BookingsPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const auth = useAuth(); // ✅ Add useAuth hook
-  const { user, isUserLoading } = useUser(auth); // ✅ Pass auth to useUser
+  const { user, isLoaded } = useUser();
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -46,53 +44,52 @@ export default function BookingsPage() {
   const resourceType = form.watch("resourceType");
 
   const onSubmit = async (data: BookingFormData) => {
-    if (!firestore || !user) return;
+    if (!user) return;
     setLoading(true);
 
     const allResources = [...venues, ...buses];
     const resourceName = allResources.find(r => r.id === data.resourceId)?.name || 'Unknown Resource';
 
-    const bookingsCollectionRef = collection(firestore, "bookings");
-    
     const newBookingData = {
-      ...data,
-      resourceName,
-      bookingDate: Timestamp.fromDate(data.bookingDate),
-      status: "Pending",
-      requesterId: user.uid,
-      requesterName: user.displayName || user.email?.split('@')[0] || "Anonymous User", // ✅ Better fallback
+      resource_type: data.resourceType,
+      resource_id: data.resourceId,
+      resource_name: resourceName,
+      booking_date: data.bookingDate.toISOString(),
+      attendees: data.attendees,
+      event_title: data.eventTitle,
+      event_description: data.eventDescription,
       department: data.department,
+      status: 'Pending' as const,
+      requester_id: user.id,
+      requester_name: user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || "Anonymous User",
     };
-    
-    addDoc(bookingsCollectionRef, newBookingData)
-      .then(() => {
-        toast({
-          title: "Booking Request Submitted!",
-          description: "Your request has been sent for approval.",
-        });
-        form.reset();
-      })
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: bookingsCollectionRef.path,
-            operation: 'create',
-            requestResourceData: newBookingData,
-        });
 
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-            variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: "There was a problem with your request. Insufficient permissions.",
-        });
-      })
-      .finally(() => {
-        setLoading(false);
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .insert(newBookingData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating booking:', error);
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "There was a problem with your request. Please try again.",
       });
+    } else {
+      toast({
+        title: "Booking Request Submitted!",
+        description: "Your request has been sent for approval.",
+      });
+      form.reset();
+    }
+
+    setLoading(false);
   };
 
   // ✅ Show loading while user is loading
-  if (isUserLoading) {
+  if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -150,56 +147,56 @@ export default function BookingsPage() {
                         {resourceType === 'bus' && buses.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                     {form.formState.errors.resourceId && <p className="text-sm font-medium text-destructive">{form.formState.errors.resourceId.message}</p>}
+                    {form.formState.errors.resourceId && <p className="text-sm font-medium text-destructive">{form.formState.errors.resourceId.message}</p>}
                   </div>
                 )}
               />
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-               <Controller
+              <Controller
                 name="bookingDate"
                 control={form.control}
                 render={({ field }) => (
-                   <div className="space-y-2">
-                      <Label htmlFor="booking-date">Booking Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                      {form.formState.errors.bookingDate && <p className="text-sm font-medium text-destructive">{form.formState.errors.bookingDate.message}</p>}
-                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="booking-date">Booking Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    {form.formState.errors.bookingDate && <p className="text-sm font-medium text-destructive">{form.formState.errors.bookingDate.message}</p>}
+                  </div>
                 )}
               />
-              
+
               <div className="space-y-2">
                 <Label htmlFor="attendees">Number of Attendees</Label>
                 <Input id="attendees" type="number" placeholder="e.g., 50" {...form.register("attendees")} />
                 {form.formState.errors.attendees && <p className="text-sm font-medium text-destructive">{form.formState.errors.attendees.message}</p>}
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-               <Controller
+              <Controller
                 name="department"
                 control={form.control}
                 render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <SelectTrigger id="department">
-                        <SelectValue placeholder="Select your department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger id="department">
+                      <SelectValue placeholder="Select your department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 )}
               />
               {form.formState.errors.department && <p className="text-sm font-medium text-destructive">{form.formState.errors.department.message}</p>}
@@ -217,11 +214,11 @@ export default function BookingsPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-end">
-              <Button type="submit" disabled={loading || !user || isUserLoading}>
-                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit for Approval
-              </Button>
-            </CardFooter>
+            <Button type="submit" disabled={loading || !user || !isLoaded}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Submit for Approval
+            </Button>
+          </CardFooter>
         </Card>
       </form>
     </div>

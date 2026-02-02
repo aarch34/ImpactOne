@@ -1,58 +1,77 @@
 
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldAlert, Check, X } from "lucide-react";
-import { useCollection, useMemoFirebase, useUser, useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import type { AdminBooking } from '@/lib/types';
+import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase, type Booking } from '@/lib/supabase/client';
 
-const ADMIN_EMAIL = 'admin.impact@iceas.ac.in';
+const ADMIN_EMAIL = 'thejaswinp6@gmail.com';
 
 export default function AdminPage() {
-    const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
+    const { user, isLoaded } = useUser();
     const { toast } = useToast();
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [loading, setLoading] = useState(true);
     const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
-    const isAdmin = useMemo(() => user?.email === ADMIN_EMAIL, [user]);
+    const isAdmin = useMemo(() => user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL, [user]);
 
-    const bookingsQuery = useMemoFirebase(() => {
-        if (!firestore || !isAdmin) return null;
-        return query(collection(firestore, `bookings`), orderBy('bookingDate', 'desc'));
-    }, [firestore, isAdmin]);
+    // Fetch all bookings from Supabase
+    useEffect(() => {
+        async function fetchBookings() {
+            if (!isAdmin) return;
 
-    const { data: bookings, isLoading: loading } = useCollection<AdminBooking>(bookingsQuery);
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('bookings')
+                .select('*')
+                .order('booking_date', { ascending: false });
+
+            if (data) {
+                setBookings(data);
+            }
+            setLoading(false);
+        }
+
+        if (isLoaded) {
+            fetchBookings();
+        }
+    }, [isAdmin, isLoaded]);
 
     const handleUpdateStatus = async (bookingId: string, newStatus: 'Approved' | 'Rejected') => {
-      if (!firestore) return;
-      setUpdatingBookingId(bookingId);
-      const bookingRef = doc(firestore, 'bookings', bookingId);
-      
-      try {
-        await updateDoc(bookingRef, { status: newStatus });
-        toast({
-          title: "Booking Updated",
-          description: `Booking has been successfully ${newStatus.toLowerCase()}.`,
-        });
-      } catch (error) {
-        console.error("Error updating booking status: ", error);
-        toast({
-          variant: "destructive",
-          title: "Update Failed",
-          description: "Could not update the booking status.",
-        });
-      } finally {
+        setUpdatingBookingId(bookingId);
+
+        const { error } = await supabase
+            .from('bookings')
+            .update({ status: newStatus })
+            .eq('id', bookingId);
+
+        if (error) {
+            console.error("Error updating booking status: ", error);
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: "Could not update the booking status.",
+            });
+        } else {
+            toast({
+                title: "Booking Updated",
+                description: `Booking has been successfully ${newStatus.toLowerCase()}.`,
+            });
+            // Update local state
+            setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+        }
+
         setUpdatingBookingId(null);
-      }
     };
-    
+
     const getBadgeVariant = (status: string) => {
         switch (status) {
             case 'Approved': return 'default';
@@ -62,14 +81,14 @@ export default function AdminPage() {
         }
     };
 
-    if (isUserLoading || (user && !isAdmin && loading)) {
+    if (!isLoaded || (user && !isAdmin && loading)) {
         return (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
         );
     }
-    
+
     if (!isAdmin) {
         return (
             <div className="flex justify-center items-center h-full">
@@ -108,7 +127,7 @@ export default function AdminPage() {
                     </TableHeader>
                     <TableBody>
                         {loading && (
-                           <TableRow>
+                            <TableRow>
                                 <TableCell colSpan={6} className="text-center p-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                                 </TableCell>
@@ -123,13 +142,15 @@ export default function AdminPage() {
                         )}
                         {bookings?.map((booking) => (
                             <TableRow key={booking.id}>
-                                <TableCell className="font-medium">{booking.resourceName}</TableCell>
-                                <TableCell>{booking.requesterName}</TableCell>
+                                <TableCell className="font-medium">{booking.resource_name}</TableCell>
+                                <TableCell>{booking.requester_name}</TableCell>
                                 <TableCell>{booking.department}</TableCell>
-                                <TableCell>{booking.bookingDate ? format(booking.bookingDate.toDate(), 'PP') : 'N/A'}</TableCell>
+                                <TableCell>
+                                    {format(new Date(booking.booking_date), 'PPP')}
+                                </TableCell>
                                 <TableCell>
                                     <Badge variant={getBadgeVariant(booking.status)}
-                                           className={booking.status === "Approved" ? "bg-primary text-primary-foreground hover:bg-primary/80" : ""}>
+                                        className={booking.status === "Approved" ? "bg-primary text-primary-foreground hover:bg-primary/80" : ""}>
                                         {booking.status}
                                     </Badge>
                                 </TableCell>
@@ -137,20 +158,20 @@ export default function AdminPage() {
                                     {booking.status === 'Pending' ? (
                                         <div className="flex gap-2 justify-end">
                                             <Button
-                                              variant="outline"
-                                              size="icon"
-                                              onClick={() => handleUpdateStatus(booking.id, 'Approved')}
-                                              disabled={updatingBookingId === booking.id}
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => handleUpdateStatus(booking.id, 'Approved')}
+                                                disabled={updatingBookingId === booking.id}
                                             >
-                                              {updatingBookingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-green-600" />}
+                                                {updatingBookingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-green-600" />}
                                             </Button>
                                             <Button
-                                              variant="outline"
-                                              size="icon"
-                                              onClick={() => handleUpdateStatus(booking.id, 'Rejected')}
-                                              disabled={updatingBookingId === booking.id}
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => handleUpdateStatus(booking.id, 'Rejected')}
+                                                disabled={updatingBookingId === booking.id}
                                             >
-                                               {updatingBookingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 text-red-600" />}
+                                                {updatingBookingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 text-red-600" />}
                                             </Button>
                                         </div>
                                     ) : (
