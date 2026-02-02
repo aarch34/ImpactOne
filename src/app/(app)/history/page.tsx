@@ -68,6 +68,8 @@ export default function HistoryPage() {
                 return 'secondary';
             case 'Rejected':
                 return 'destructive';
+            case 'Cancelled':
+                return 'outline';
             default:
                 return 'outline';
         }
@@ -76,7 +78,7 @@ export default function HistoryPage() {
     const exportToCSV = () => {
         if (!bookings || bookings.length === 0) return;
 
-        const headers = ['ID', 'Event Title', 'Resource', 'Department', 'Date', 'Requester', 'Status', 'Attendees'];
+        const headers = ['ID', 'Event Title', 'Resource', 'Department', 'Date', 'Requester', 'Faculty In-charge', 'Contact', 'Attendees', 'Status'];
         const csvContent = [
             headers.join(','),
             ...bookings.map(booking => [
@@ -86,8 +88,10 @@ export default function HistoryPage() {
                 `"${booking.department || 'N/A'}"`,
                 booking.booking_date ? format(new Date(booking.booking_date), 'yyyy-MM-dd') : 'N/A',
                 `"${booking.requester_name || 'N/A'}"`,
-                booking.status || 'N/A',
-                booking.attendees || 0
+                `"${booking.faculty_incharge || 'N/A'}"`,
+                `"${booking.contact_number || 'N/A'}"`,
+                booking.attendees || 0,
+                booking.status || 'N/A'
             ].join(','))
         ].join('\n');
 
@@ -117,8 +121,7 @@ export default function HistoryPage() {
                     <p className="text-muted-foreground">
                         {isAdmin
                             ? 'A log of all past and current booking requests.'
-                            : 'A log of your past and current booking requests.'
-                        }
+                            : 'A log of your past and current booking requests.'}
                     </p>
                 </div>
                 <Button onClick={exportToCSV} disabled={!bookings || bookings.length === 0}>
@@ -152,12 +155,14 @@ export default function HistoryPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[100px]">ID</TableHead>
+                            <TableHead className="w-[80px]">ID</TableHead>
                             <TableHead>Event Title</TableHead>
                             <TableHead>Resource</TableHead>
                             <TableHead>Department</TableHead>
                             <TableHead>Date</TableHead>
                             {isAdmin && <TableHead>Requester</TableHead>}
+                            <TableHead>Faculty In-charge</TableHead>
+                            <TableHead>Contact</TableHead>
                             <TableHead>Attendees</TableHead>
                             <TableHead className="text-right">Status</TableHead>
                         </TableRow>
@@ -165,7 +170,7 @@ export default function HistoryPage() {
                     <TableBody>
                         {loading && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 8 : 7} className="text-center">
+                                <TableCell colSpan={isAdmin ? 10 : 9} className="text-center">
                                     <div className="flex justify-center items-center p-8">
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                         <span className="ml-2">Loading booking history...</span>
@@ -175,7 +180,7 @@ export default function HistoryPage() {
                         )}
                         {!loading && !error && (!bookings || bookings.length === 0) && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground p-8">
+                                <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground p-8">
                                     {isAdmin ? 'No bookings found in the system.' : 'You have no booking history yet.'}
                                 </TableCell>
                             </TableRow>
@@ -196,11 +201,18 @@ export default function HistoryPage() {
                                 {isAdmin && (
                                     <TableCell>{booking.requester_name || 'N/A'}</TableCell>
                                 )}
+                                <TableCell className="font-medium">{booking.faculty_incharge || 'N/A'}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                    {booking.contact_number || 'N/A'}
+                                </TableCell>
                                 <TableCell>{booking.attendees || 0}</TableCell>
                                 <TableCell className="text-right">
                                     <Badge
                                         variant={getBadgeVariant(booking.status)}
-                                        className={booking.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" : ""}
+                                        className={
+                                            booking.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" :
+                                                booking.status === "Cancelled" ? "bg-gray-500 text-white hover:bg-gray-600" : ""
+                                        }
                                     >
                                         {booking.status || 'Unknown'}
                                     </Badge>

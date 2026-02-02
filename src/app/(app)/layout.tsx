@@ -101,6 +101,11 @@ export default function AppLayout({
         <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
           {children}
         </main>
+        <footer className="border-t py-4 px-6 text-center text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
+          <p>
+            Developed by <span className="font-semibold text-foreground">Thejaswin P (1IC23CS082)</span> and <span className="font-semibold text-foreground">Aarcha U (1IC21AI001)</span>
+          </p>
+        </footer>
       </div>
     </SidebarProvider>
   );

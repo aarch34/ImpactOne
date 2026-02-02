@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, Bot, CalendarCheck, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { PublicCalendar } from "@/components/app/public-calendar";
 
 export default function HomePage() {
   const { isSignedIn, isLoaded } = useUser();
@@ -138,9 +139,32 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Public Calendar Section */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/20">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-green-100 text-green-800 px-3 py-1 text-sm font-medium border border-green-200">
+                  Live Schedule
+                </div>
+                <h2 className="text-3xl font-bold font-headline tracking-tighter sm:text-5xl">Upcoming Events</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Check out what's happening around campus. All approved events are listed below.
+                </p>
+              </div>
+            </div>
+
+            <div className="mx-auto max-w-6xl">
+              <PublicCalendar />
+            </div>
+          </div>
+        </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 ImpactOne. All rights reserved.</p>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t font-space-grotesk">
+        <p className="text-xs text-muted-foreground text-center sm:text-left">
+          &copy; {new Date().getFullYear()} ImpactOne. Developed by <span className="font-semibold text-primary">Thejaswin P (1IC23CS082)</span> and <span className="font-semibold text-primary">Aarcha U (1IC21AI001)</span>
+        </p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
             Terms of Service
@@ -150,6 +174,6 @@ export default function HomePage() {
           </Link>
         </nav>
       </footer>
-    </div>
+    </div >
   );
 }

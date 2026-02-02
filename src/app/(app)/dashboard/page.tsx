@@ -1,250 +1,210 @@
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, BookOpenCheck, CalendarCheck, Clock, Loader2 } from "lucide-react";
-import { departments, venues, buses } from "@/lib/data";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { useUser } from '@clerk/nextjs';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useUser } from "@clerk/nextjs";
 import { supabase, type Booking } from '@/lib/supabase/client';
-import { format } from 'date-fns';
+import { Calendar, Clock, MapPin, TrendingUp, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+
+interface Stats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0 });
+  const [loading, setLoading] = useState(true);
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  // ✅ Check if user is admin
-  const userEmail = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = userEmail === 'thejaswinp6@gmail.com';
-
-  // Fetch bookings from Supabase
   useEffect(() => {
     async function fetchBookings() {
-      if (!user?.id) return;
+      if (!user) return;
 
-      setBookingsLoading(true);
-      let query = supabase.from('bookings').select('*');
+      try {
+        // Query user's bookings using Clerk user ID
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('requester_id', user.id)
+          .order('booking_date', { ascending: false })
+          .limit(10);
 
-      if (!isAdmin) {
-        query = query.eq('requester_id', user.id);
-      }
+        if (error) {
+          console.error("Error fetching bookings:", error);
+          setLoading(false);
+          return;
+        }
 
-      const { data, error } = await query;
-      if (data) {
-        setBookings(data);
-      } else if (error) {
+        setBookings(data || []);
+
+        // Calculate stats
+        const statsData = {
+          total: data?.length || 0,
+          pending: data?.filter(b => b.status === "Pending").length || 0,
+          approved: data?.filter(b => b.status === "Approved").length || 0,
+          rejected: data?.filter(b => b.status === "Rejected").length || 0,
+        };
+        setStats(statsData);
+      } catch (error) {
         console.error("Error fetching bookings:", error);
-        setBookings([]); // Ensure bookings is an empty array on error
+      } finally {
+        setLoading(false);
       }
-      setBookingsLoading(false);
     }
 
-    if (isLoaded) {
+    if (isLoaded && user) {
       fetchBookings();
     }
-  }, [user?.id, isAdmin, isLoaded]);
+  }, [isLoaded, user]);
 
-  const dashboardStats = useMemo(() => {
-    if (!bookings) { // This condition will now always be false as bookings is initialized to []
-      return {
-        totalBookings: 0,
-        upcomingEvents: 0,
-        pendingRequests: 0,
-        activeResources: venues.length + buses.length,
-        chartData: [],
-        recentActivity: [],
-      };
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "approved":
+        return "bg-green-500 text-white";
+      case "pending":
+        return "bg-yellow-500 text-white";
+      case "rejected":
+        return "bg-red-500 text-white";
+      default:
+        return "bg-gray-500 text-white";
     }
+  };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // ✅ For admin, show all pending requests. For users, show their approved events
-    const upcomingEvents = bookings.filter(b => b.status === 'Approved' && new Date(b.booking_date) >= today).length;
-    const pendingRequests = bookings.filter(b => b.status === 'Pending').length;
-
-    const resourceUsage = bookings.reduce((acc, booking) => {
-      const name = booking.resource_name;
-      if (!acc[name]) {
-        acc[name] = 0;
-      }
-      acc[name]++;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const chartData = Object.entries(resourceUsage).map(([name, total]) => ({ name, total }));
-
-    const recentActivity = [...bookings]
-      .sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime())
-      .slice(0, 3);
-
-    return {
-      totalBookings: bookings.length,
-      upcomingEvents,
-      pendingRequests,
-      activeResources: venues.length + buses.length,
-      chartData,
-      recentActivity,
-    };
-  }, [bookings]);
-
-  // Show loading while user is loading or bookings are loading (but we have user)
-  if (!isLoaded) {
+  if (!isLoaded || loading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading user data...</p>
+        <p className="ml-4 text-muted-foreground">Loading dashboard...</p>
       </div>
     );
   }
 
-  // If no user after loading, this shouldn't happen due to Entry component protection
-  if (!user) {
+  if (!isSignedIn || !user) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <p className="text-muted-foreground">No user found</p>
-      </div>
-    );
-  }
-
-  // Show loading while bookings are being fetched (but we have user)
-  if (bookingsLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading dashboard data...</p>
+        <p className="text-muted-foreground">Please sign in to view your dashboard</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-headline tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            {isAdmin ? 'Admin Dashboard - Manage all campus activities.' : 'Welcome back, here\'s a summary of campus activities.'}
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
+          Welcome, {user.firstName || "User"}!
+        </h1>
+        <p className="text-muted-foreground">Overview of your booking requests and status</p>
       </div>
 
-      <Tabs defaultValue={departments[0].id}>
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 md:w-max">
-          {departments.map((dept) => (
-            <TabsTrigger key={dept.id} value={dept.id}>{dept.name}</TabsTrigger>
-          ))}
-        </TabsList>
-        {departments.map((dept) => (
-          <TabsContent key={dept.id} value={dept.id}>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {isAdmin ? 'Total Bookings' : 'My Bookings'}
-                  </CardTitle>
-                  <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.totalBookings}</div>
-                  <p className="text-xs text-muted-foreground">All time</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
-                  <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.upcomingEvents}</div>
-                  <p className="text-xs text-muted-foreground">Approved and upcoming</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {isAdmin ? 'Pending Approvals' : 'My Pending Requests'}
-                  </CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.pendingRequests}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {isAdmin ? 'Requires your approval' : 'Requires attention'}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Resources</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.activeResources}</div>
-                  <p className="text-xs text-muted-foreground">{venues.length} venues, {buses.length} buses</p>
-                </CardContent>
-              </Card>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">All your booking requests</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pending}</div>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Approved</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.approved}</div>
+            <p className="text-xs text-muted-foreground">Successfully approved</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+            <MapPin className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.rejected}</div>
+            <p className="text-xs text-muted-foreground">Not approved</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Bookings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Bookings</CardTitle>
+          <CardDescription>Your latest booking requests (sorted by date)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {bookings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Calendar className="h-12 w-12 mb-4" />
+              <p>No bookings yet</p>
+              <p className="text-sm">Create your first booking request to get started</p>
             </div>
-            <div className="grid gap-4 mt-4 grid-cols-1 lg:grid-cols-7">
-              <Card className="lg:col-span-4">
-                <CardHeader>
-                  <CardTitle className="font-headline">Booking Overview</CardTitle>
-                  <CardDescription>Usage of all resources.</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ChartContainer config={{}} className="min-h-[350px] w-full">
-                    <ResponsiveContainer width="100%" height={350}>
-                      <BarChart accessibilityLayer data={dashboardStats.chartData}>
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={4} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-3">
-                <CardHeader>
-                  <CardTitle className="font-headline">Recent Activity</CardTitle>
-                  <CardDescription>
-                    {isAdmin ? 'Latest booking requests from all users.' : 'Your latest booking requests.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {dashboardStats.recentActivity.length > 0 ? dashboardStats.recentActivity.map((booking) => {
-                    const getInitials = (name?: string | null) => {
-                      if (!name) return "A";
-                      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                    }
-                    return (
-                      <div className="flex items-center" key={booking.id}>
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback>{getInitials(booking.requester_name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="ml-4 space-y-1">
-                          <p className="text-sm font-medium leading-none">{booking.requester_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Booked {booking.resource_name} • {booking.status}
-                          </p>
-                        </div>
-                        <div className="ml-auto font-medium text-xs text-muted-foreground">
-                          {format(new Date(booking.booking_date), 'PP')}
-                        </div>
+          ) : (
+            <div className="space-y-4">
+              {bookings.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{booking.event_title || "Untitled Event"}</h3>
+                      <Badge className={getStatusColor(booking.status)}>
+                        {booking.status || "Unknown"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        <span>{booking.resource_name || "N/A"}</span>
                       </div>
-                    )
-                  }) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
-                  )}
-                </CardContent>
-              </Card>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          {booking.booking_date
+                            ? format(new Date(booking.booking_date), "MMM d, yyyy")
+                            : "No date"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {booking.start_time || "N/A"} - {booking.end_time || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {booking.department || "No department"} • {booking.attendees || 0} attendees
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

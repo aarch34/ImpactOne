@@ -48,28 +48,75 @@ export default function AdminPage() {
     const handleUpdateStatus = async (bookingId: string, newStatus: 'Approved' | 'Rejected') => {
         setUpdatingBookingId(bookingId);
 
-        const { error } = await supabase
-            .from('bookings')
-            .update({ status: newStatus })
-            .eq('id', bookingId);
+        try {
+            // Find the booking
+            const booking = bookings.find(b => b.id === bookingId);
+            if (!booking) {
+                throw new Error("Booking not found");
+            }
 
-        if (error) {
-            console.error("Error updating booking status: ", error);
+            const { error } = await supabase
+                .from('bookings')
+                .update({
+                    status: newStatus,
+                    reviewed_at: new Date().toISOString(),
+                    reviewed_by: user?.primaryEmailAddress?.emailAddress || 'Unknown Admin'
+                })
+                .eq('id', bookingId);
+
+            if (error) {
+                console.error("Error updating booking status: ", error);
+                throw error;
+            }
+
+            // Send email notification
+            try {
+                const emailResponse = await fetch('/api/send-booking-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: newStatus.toLowerCase(),
+                        booking: booking
+                    }),
+                });
+
+                if (!emailResponse.ok) {
+                    const errorData = await emailResponse.json();
+                    console.error('SERVER RESPONDED WITH ERROR:', errorData);
+                    toast({
+                        variant: "destructive",
+                        title: "Email Notification Failed",
+                        description: `Booking updated, but email failed: ${errorData.details || 'Check console details'}`,
+                    });
+                }
+            } catch (emailError) {
+                console.error('Error sending email:', emailError);
+                toast({
+                    variant: "destructive",
+                    title: "Email Warning",
+                    description: "Booking updated, but email notification failed to send.",
+                });
+            }
+
+            toast({
+                title: "Booking Updated",
+                description: `Booking has been successfully ${newStatus.toLowerCase()} and email notification sent.`,
+            });
+
+            // Update local state
+            setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+
+        } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Update Failed",
                 description: "Could not update the booking status.",
             });
-        } else {
-            toast({
-                title: "Booking Updated",
-                description: `Booking has been successfully ${newStatus.toLowerCase()}.`,
-            });
-            // Update local state
-            setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+        } finally {
+            setUpdatingBookingId(null);
         }
-
-        setUpdatingBookingId(null);
     };
 
     const getBadgeVariant = (status: string) => {
