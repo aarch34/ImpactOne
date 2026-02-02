@@ -12,7 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2, UtensilsCrossed, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { venues, buses } from "@/lib/data";
+import { venues, buses, turfAreas, departmentCategories, departments } from "@/lib/data";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,16 +28,6 @@ const TIME_SLOTS = [
   // 13:00 (1:00 PM) - 14:00 (2:00 PM) = LUNCH BREAK
   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"
 ];
-
-// ✅ Updated department structure
-const DEPARTMENTS = {
-  Engineering: [
-    "AIML", "CSE", "Electronics", "Automation and Robotics",
-    "Mechanical", "Civil", "Data Science", "Cyber Security"
-  ],
-  Management: ["MBA", "BBA", "BCom", "Other Bachelor's Degree"],
-  Architecture: ["Architecture"]
-};
 
 const bookingSchema = z.object({
   resourceType: z.enum(["venue", "bus", "turf"], { required_error: "Please select a resource type." }),
@@ -452,9 +442,11 @@ export default function BookingsPage() {
                           <SelectValue placeholder="Select turf area" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Football">⚽ Football Area</SelectItem>
-                          <SelectItem value="Badminton">🏸 Badminton Area</SelectItem>
-                          <SelectItem value="Table Tennis">🏓 Table Tennis Area</SelectItem>
+                          {turfAreas.map(area => (
+                            <SelectItem key={area.id} value={area.name}>
+                              {area.icon} {area.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -529,7 +521,7 @@ export default function BookingsPage() {
             {/* TIME SLOT GRID */}
             <div className="space-y-2">
               <Label>Select Time Slots {selectedSlots.length > 0 && `(${selectedSlots.length} selected)`}</Label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {TIME_SLOTS.map((slot) => {
                   const isSelected = selectedSlots.includes(slot);
                   return (
@@ -550,7 +542,7 @@ export default function BookingsPage() {
                   );
                 })}
 
-                <div className="col-span-4 flex items-center justify-center gap-2 py-2 px-4 bg-orange-50 border border-orange-200 rounded-md">
+                <div className="col-span-3 sm:col-span-4 flex items-center justify-center gap-2 py-2 px-4 bg-orange-50 border border-orange-200 rounded-md">
                   <UtensilsCrossed className="h-4 w-4 text-orange-600" />
                   <span className="text-sm font-medium text-orange-700">Lunch Break: 1:00 PM - 2:00 PM</span>
                 </div>
@@ -575,8 +567,8 @@ export default function BookingsPage() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(DEPARTMENTS).map(category => (
-                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        {departmentCategories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -604,8 +596,8 @@ export default function BookingsPage() {
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {departmentCategory && DEPARTMENTS[departmentCategory as keyof typeof DEPARTMENTS]?.map(dept => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        {departmentCategory && departments[departmentCategory]?.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

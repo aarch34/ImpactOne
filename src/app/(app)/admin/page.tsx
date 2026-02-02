@@ -130,7 +130,7 @@ export default function AdminPage() {
                 <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Panel</h1>
                 <p className="text-muted-foreground">Manage all booking requests across the campus.</p>
             </div>
-            <div className="border rounded-lg bg-card">
+            <div className="border rounded-lg bg-card overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -151,7 +151,7 @@ export default function HistoryPage() {
                 </div>
             )}
 
-            <div className="border rounded-lg bg-card">
+            <div className="border rounded-lg bg-card overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
