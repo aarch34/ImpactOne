@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase, type Booking } from '@/lib/supabase/client';
 
-const ADMIN_EMAIL = 'thejaswinp6@gmail.com';
+const ADMIN_EMAIL = 'impact1.iceas@gmail.com';
 
 export default function AdminPage() {
     const { user, isLoaded } = useUser();
@@ -69,40 +69,10 @@ export default function AdminPage() {
                 throw error;
             }
 
-            // Send email notification
-            try {
-                const emailResponse = await fetch('/api/send-booking-email', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        type: newStatus.toLowerCase(),
-                        booking: booking
-                    }),
-                });
-
-                if (!emailResponse.ok) {
-                    const errorData = await emailResponse.json();
-                    console.error('SERVER RESPONDED WITH ERROR:', errorData);
-                    toast({
-                        variant: "destructive",
-                        title: "Email Notification Failed",
-                        description: `Booking updated, but email failed: ${errorData.details || 'Check console details'}`,
-                    });
-                }
-            } catch (emailError) {
-                console.error('Error sending email:', emailError);
-                toast({
-                    variant: "destructive",
-                    title: "Email Warning",
-                    description: "Booking updated, but email notification failed to send.",
-                });
-            }
 
             toast({
                 title: "Booking Updated",
-                description: `Booking has been successfully ${newStatus.toLowerCase()} and email notification sent.`,
+                description: `Booking has been successfully ${newStatus.toLowerCase()}.`,
             });
 
             // Update local state

@@ -17,7 +17,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { user } = useUser();
-  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'thejaswinp6@gmail.com';
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'impact1.iceas@gmail.com';
 
 
   return (

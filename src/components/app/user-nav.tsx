@@ -31,7 +31,7 @@ export function UserNav() {
 
   // Check if user is admin
   const userEmail = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = userEmail === 'thejaswinp6@gmail.com';
+  const isAdmin = userEmail === 'impact1.iceas@gmail.com';
 
   // Fetch pending bookings count for admin
   useEffect(() => {
@@ -77,6 +77,7 @@ export function UserNav() {
 
   return (
     <div className="flex items-center gap-4">
+
       {/* Admin Notification Bell */}
       {isAdmin && (
         <Link href="/pending-approvals">

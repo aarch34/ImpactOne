@@ -12,7 +12,7 @@ import { Loader2, Check, X, Calendar, Clock, MapPin, Users, User, Phone, Mail, A
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
-const ADMIN_EMAIL = 'thejaswinp6@gmail.com';
+const ADMIN_EMAIL = 'impact1.iceas@gmail.com';
 
 export default function PendingApprovalsPage() {
     const [pendingBookings, setPendingBookings] = useState<Booking[]>([]);
@@ -91,41 +91,10 @@ export default function PendingApprovalsPage() {
 
             if (error) throw error;
 
-            // Send email notification
-            try {
-                const emailResponse = await fetch('/api/send-booking-email', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        type: action.toLowerCase(),
-                        booking: booking
-                    }),
-                });
-
-                if (!emailResponse.ok) {
-                    const errorData = await emailResponse.json();
-                    console.error('SERVER RESPONDED WITH ERROR:', errorData);
-
-                    toast({
-                        variant: "destructive",
-                        title: "Email Notification Failed",
-                        description: `Booking status updated, but email failed: ${errorData.details || 'Check console details'}`,
-                    });
-                }
-            } catch (emailError) {
-                console.error('Error sending email:', emailError);
-                toast({
-                    variant: "destructive",
-                    title: "Email Warning",
-                    description: "Booking updated, but email notification failed to send.",
-                });
-            }
 
             toast({
                 title: `Booking ${action}`,
-                description: `The booking request has been ${action.toLowerCase()} and the user has been notified via email.`,
+                description: `The booking request has been ${action.toLowerCase()}.`,
             });
 
             // Remove from pending list

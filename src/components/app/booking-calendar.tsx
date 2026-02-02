@@ -34,7 +34,7 @@ export function BookingCalendar() {
 
   // Check if user is admin
   const userEmail = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = userEmail === 'thejaswinp6@gmail.com';
+  const isAdmin = userEmail === 'impact1.iceas@gmail.com';
 
   useEffect(() => {
     async function fetchBookings() {

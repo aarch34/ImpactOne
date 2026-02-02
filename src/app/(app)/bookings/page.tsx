@@ -251,7 +251,7 @@ export default function BookingsPage() {
         resource_name: resourceName,
         sub_area: data.subArea || null,
         facility: resourceTypeValue === 'turf' ? 'Turf' : resourceTypeValue,
-        booking_date: data.bookingDate.toISOString(),
+        booking_date: format(data.bookingDate, "yyyy-MM-dd"),
         start_time: startTime,
         end_time: endTime,
         selected_slots: sortedSlots,

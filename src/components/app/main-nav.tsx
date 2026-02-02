@@ -22,7 +22,7 @@ const adminLinks = [
 export function MainNav() {
   const pathname = usePathname();
   const { user } = useUser();
-  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'thejaswinp6@gmail.com';
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'impact1.iceas@gmail.com';
 
   return (
     <>
