@@ -4,10 +4,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, AlertTriangle } from "lucide-react";
+import { FileDown, Loader2, AlertTriangle, Download } from "lucide-react";
 import { useUser } from '@clerk/nextjs';
 import { supabase, type Booking } from '@/lib/supabase/client';
 import { format } from 'date-fns';
+import { BookingAcknowledgment } from "@/components/app/booking-acknowledgment";
 
 export default function HistoryPage() {
     const { user, isLoaded } = useUser();
@@ -16,6 +17,7 @@ export default function HistoryPage() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
     // Check if user is admin
     const userEmail = user?.primaryEmailAddress?.emailAddress;
@@ -165,12 +167,13 @@ export default function HistoryPage() {
                             <TableHead>Contact</TableHead>
                             <TableHead>Attendees</TableHead>
                             <TableHead className="text-right">Status</TableHead>
+                            <TableHead className="text-right w-[100px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 10 : 9} className="text-center">
+                                <TableCell colSpan={isAdmin ? 11 : 10} className="text-center">
                                     <div className="flex justify-center items-center p-8">
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                         <span className="ml-2">Loading booking history...</span>
@@ -180,7 +183,7 @@ export default function HistoryPage() {
                         )}
                         {!loading && !error && (!bookings || bookings.length === 0) && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground p-8">
+                                <TableCell colSpan={isAdmin ? 11 : 10} className="text-center text-muted-foreground p-8">
                                     {isAdmin ? 'No bookings found in the system.' : 'You have no booking history yet.'}
                                 </TableCell>
                             </TableRow>
@@ -217,6 +220,18 @@ export default function HistoryPage() {
                                         {booking.status || 'Unknown'}
                                     </Badge>
                                 </TableCell>
+                                <TableCell className="text-right">
+                                    {booking.status === 'Approved' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelectedBooking(booking)}
+                                            title="Download Acknowledgment"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -249,6 +264,14 @@ export default function HistoryPage() {
                         <div className="text-sm text-muted-foreground">Rejected</div>
                     </div>
                 </div>
+            )}
+
+            {/* Booking Acknowledgment Dialog */}
+            {selectedBooking && (
+                <BookingAcknowledgment
+                    booking={selectedBooking}
+                    onClose={() => setSelectedBooking(null)}
+                />
             )}
         </div>
     )

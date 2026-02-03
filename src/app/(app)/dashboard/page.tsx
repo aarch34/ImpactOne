@@ -21,35 +21,47 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const { isLoaded, isSignedIn, user } = useUser();
 
+  // Check if user is admin
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const isAdmin = userEmail === 'impact1.iceas@gmail.com';
+
   useEffect(() => {
     async function fetchBookings() {
       if (!user) return;
 
       try {
-        // Query user's bookings using Clerk user ID
-        const { data, error } = await supabase
+        // Query bookings for stats - all bookings (no limit)
+        let statsQuery = supabase
           .from('bookings')
           .select('*')
-          .eq('requester_id', user.id)
-          .order('booking_date', { ascending: false })
-          .limit(10);
+          .order('booking_date', { ascending: false });
 
-        if (error) {
-          console.error("Error fetching bookings:", error);
+        // Only filter by requester_id for non-admin users
+        if (!isAdmin) {
+          statsQuery = statsQuery.eq('requester_id', user.id);
+        }
+
+        const { data: allData, error: statsError } = await statsQuery;
+
+        if (statsError) {
+          console.error("Error fetching bookings stats:", statsError);
           setLoading(false);
           return;
         }
 
-        setBookings(data || []);
-
-        // Calculate stats
+        // Calculate stats from all bookings
         const statsData = {
-          total: data?.length || 0,
-          pending: data?.filter(b => b.status === "Pending").length || 0,
-          approved: data?.filter(b => b.status === "Approved").length || 0,
-          rejected: data?.filter(b => b.status === "Rejected").length || 0,
+          total: allData?.length || 0,
+          pending: allData?.filter(b => b.status === "Pending").length || 0,
+          approved: allData?.filter(b => b.status === "Approved").length || 0,
+          rejected: allData?.filter(b => b.status === "Rejected").length || 0,
         };
         setStats(statsData);
+
+        // Get only the recent 10 bookings for display
+        const recentBookings = allData?.slice(0, 10) || [];
+        setBookings(recentBookings);
+
       } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
@@ -60,7 +72,7 @@ export default function DashboardPage() {
     if (isLoaded && user) {
       fetchBookings();
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, isAdmin]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
