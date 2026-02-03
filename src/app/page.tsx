@@ -47,14 +47,12 @@ export default function HomePage() {
           <Briefcase className="h-6 w-6 text-primary" />
           <span className="ml-2 text-lg font-bold font-headline">ImpactOne</span>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link
-            href="/login"
-            className="text-sm font-medium hover:underline underline-offset-4"
-            prefetch={false}
-          >
-            Login
-          </Link>
+        <nav className="ml-auto flex gap-3 sm:gap-4 items-center">
+          <Button variant="outline" asChild>
+            <Link href="/login" prefetch={false}>
+              Login
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/login" prefetch={false}>
               Get Started
