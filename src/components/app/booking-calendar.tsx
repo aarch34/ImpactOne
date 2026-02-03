@@ -5,21 +5,15 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useUser } from "@clerk/nextjs";
 import { supabase, type Booking } from '@/lib/supabase/client';
 import { format, isSameDay } from "date-fns";
 import { Loader2, Clock, MapPin, Users, User, Phone, Mail, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 import { useToast } from "@/hooks/use-toast";
 
 export function BookingCalendar() {
@@ -27,7 +21,8 @@ export function BookingCalendar() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<Booking | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const { toast } = useToast();
   const { user } = useUser();
@@ -109,32 +104,82 @@ export function BookingCalendar() {
     return `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`;
   };
 
-  const handleCancelClick = (bookingId: string) => {
-    setBookingToCancel(bookingId);
+  const handleCancelClick = (booking: Booking) => {
+    setSelectedBookingForCancel(booking);
+    setCancellationReason('');
     setCancelDialogOpen(true);
   };
 
   const handleCancelConfirm = async () => {
-    if (!bookingToCancel) return;
+    if (!selectedBookingForCancel || !cancellationReason.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please provide a reason for cancellation.",
+      });
+      return;
+    }
 
     setCancelling(true);
     try {
+      // Update booking status to Cancelled
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'Cancelled' })
-        .eq('id', bookingToCancel);
+        .update({
+          status: 'Cancelled',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: userEmail
+        })
+        .eq('id', selectedBookingForCancel.id);
 
       if (error) throw error;
 
-      toast({
-        title: "Booking Cancelled",
-        description: "The booking has been cancelled successfully.",
-      });
+      // Send cancellation email with reason
+      try {
+        const emailResponse = await fetch('/api/send-booking-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            booking: selectedBookingForCancel,
+            action: 'Cancelled',
+            cancellationReason: cancellationReason.trim(),
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send cancellation email');
+          toast({
+            title: "Booking Cancelled",
+            description: "The booking has been cancelled, but email notification failed to send.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Booking Cancelled",
+            description: "The booking has been cancelled and the user has been notified via email.",
+          });
+        }
+      } catch (emailError) {
+        console.error('Error sending cancellation email:', emailError);
+        toast({
+          title: "Booking Cancelled",
+          description: "The booking has been cancelled, but email notification failed to send.",
+          variant: "default",
+        });
+      }
 
       // Update local state
       setBookings(prev => prev.map(b =>
-        b.id === bookingToCancel ? { ...b, status: 'Cancelled' as const } : b
+        b.id === selectedBookingForCancel.id ? { ...b, status: 'Cancelled' as const } : b
       ));
+
+      // Close dialog and reset
+      setCancelDialogOpen(false);
+      setSelectedBookingForCancel(null);
+      setCancellationReason('');
+
     } catch (err) {
       console.error('Error cancelling booking:', err);
       toast({
@@ -144,8 +189,6 @@ export function BookingCalendar() {
       });
     } finally {
       setCancelling(false);
-      setCancelDialogOpen(false);
-      setBookingToCancel(null);
     }
   };
 
@@ -320,7 +363,7 @@ export function BookingCalendar() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleCancelClick(booking.id)}
+                              onClick={() => handleCancelClick(booking)}
                               className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                             >
                               <XCircle className="h-4 w-4 mr-2" />
@@ -338,34 +381,67 @@ export function BookingCalendar() {
       </Card>
 
       {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this booking? The booking will be marked as cancelled
-              and will remain in the history for record keeping, but will be removed from active bookings.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelling}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelConfirm}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Cancel Booking</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for cancelling this booking. This will be sent to the requester via email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedBookingForCancel && (
+              <div className="p-3 bg-muted/50 rounded-md space-y-1">
+                <p className="text-sm font-medium">{selectedBookingForCancel.event_title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedBookingForCancel.resource_name} • {format(new Date(selectedBookingForCancel.booking_date), 'PPP')}
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="cancellation-reason">Cancellation Reason *</Label>
+              <Textarea
+                id="cancellation-reason"
+                placeholder="e.g., Venue maintenance required, Double booking conflict, etc."
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                This reason will be included in the cancellation email to the requester.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setSelectedBookingForCancel(null);
+                setCancellationReason('');
+              }}
               disabled={cancelling}
-              className="bg-red-600 hover:bg-red-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelConfirm}
+              disabled={cancelling || !cancellationReason.trim()}
             >
               {cancelling ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Cancelling...
                 </>
               ) : (
                 'Confirm Cancellation'
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

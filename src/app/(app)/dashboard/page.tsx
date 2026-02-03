@@ -15,24 +15,32 @@ interface Stats {
   rejected: number;
 }
 
+const ADMIN_EMAIL = 'impact1.iceas@gmail.com';
+
 export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const { isLoaded, isSignedIn, user } = useUser();
 
+  // Check if user is admin
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
+
   useEffect(() => {
     async function fetchBookings() {
       if (!user) return;
 
       try {
-        // Query user's bookings using Clerk user ID
-        const { data, error } = await supabase
+        // For admin: fetch ALL bookings, for regular users: fetch only their bookings
+        const query = supabase
           .from('bookings')
           .select('*')
-          .eq('requester_id', user.id)
-          .order('booking_date', { ascending: false })
-          .limit(10);
+          .order('booking_date', { ascending: false });
+
+        // Only filter by requester_id for non-admin users
+        const { data, error } = isAdmin
+          ? await query.limit(10)
+          : await query.eq('requester_id', user.id).limit(10);
 
         if (error) {
           console.error("Error fetching bookings:", error);
@@ -60,7 +68,7 @@ export default function DashboardPage() {
     if (isLoaded && user) {
       fetchBookings();
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, isAdmin]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -96,9 +104,13 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold font-headline tracking-tight">
-          Welcome, {user.firstName || "User"}!
+          Welcome, {isAdmin ? "Admin" : (user.firstName || "User")}!
         </h1>
-        <p className="text-muted-foreground">Overview of your booking requests and status</p>
+        <p className="text-muted-foreground">
+          {isAdmin
+            ? "Overview of your booking requests and status"
+            : "Overview of your booking requests and status"}
+        </p>
       </div>
 
       {/* Stats Cards */}
