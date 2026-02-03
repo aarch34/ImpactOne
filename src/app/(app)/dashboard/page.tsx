@@ -31,6 +31,9 @@ export default function DashboardPage() {
       if (!user) return;
 
       try {
+        console.log('Dashboard - User email:', user?.primaryEmailAddress?.emailAddress);
+        console.log('Dashboard - Is admin:', isAdmin);
+
         // Query bookings for stats - all bookings (no limit)
         let statsQuery = supabase
           .from('bookings')
@@ -39,10 +42,16 @@ export default function DashboardPage() {
 
         // Only filter by requester_id for non-admin users
         if (!isAdmin) {
+          console.log('Dashboard - Filtering by requester_id:', user.id);
           statsQuery = statsQuery.eq('requester_id', user.id);
+        } else {
+          console.log('Dashboard - Fetching ALL bookings (admin mode)');
         }
 
         const { data: allData, error: statsError } = await statsQuery;
+
+        console.log('Dashboard - Fetched data:', allData);
+        console.log('Dashboard - Error:', statsError);
 
         if (statsError) {
           console.error("Error fetching bookings stats:", statsError);
@@ -57,10 +66,13 @@ export default function DashboardPage() {
           approved: allData?.filter(b => b.status === "Approved").length || 0,
           rejected: allData?.filter(b => b.status === "Rejected").length || 0,
         };
+
+        console.log('Dashboard - Stats:', statsData);
         setStats(statsData);
 
         // Get only the recent 10 bookings for display
         const recentBookings = allData?.slice(0, 10) || [];
+        console.log('Dashboard - Recent bookings:', recentBookings);
         setBookings(recentBookings);
 
       } catch (error) {
