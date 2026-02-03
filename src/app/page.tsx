@@ -94,6 +94,28 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Public Calendar Section - Moved to top for immediate visibility */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/20">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-green-100 text-green-800 px-3 py-1 text-sm font-medium border border-green-200">
+                  Live Schedule
+                </div>
+                <h2 className="text-3xl font-bold font-headline tracking-tighter sm:text-5xl">Upcoming Events</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Check out what's happening around campus. All approved events are listed below.
+                </p>
+              </div>
+            </div>
+
+            <div className="mx-auto max-w-6xl">
+              <PublicCalendar />
+            </div>
+          </div>
+        </section>
+
         <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
@@ -139,27 +161,6 @@ export default function HomePage() {
                   <p className="text-sm text-muted-foreground">Admins can manage all booking requests from a single dashboard, with simple one-click approvals or rejections.</p>
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* Public Calendar Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/20">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-green-100 text-green-800 px-3 py-1 text-sm font-medium border border-green-200">
-                  Live Schedule
-                </div>
-                <h2 className="text-3xl font-bold font-headline tracking-tighter sm:text-5xl">Upcoming Events</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Check out what's happening around campus. All approved events are listed below.
-                </p>
-              </div>
-            </div>
-
-            <div className="mx-auto max-w-6xl">
-              <PublicCalendar />
             </div>
           </div>
         </section>
