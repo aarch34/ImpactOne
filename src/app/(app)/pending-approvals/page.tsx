@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@clerk/nextjs";
 import { supabase, type Booking } from '@/lib/supabase/client';
@@ -91,11 +94,42 @@ export default function PendingApprovalsPage() {
 
             if (error) throw error;
 
+            // Send email notification (non-blocking)
+            try {
+                const emailResponse = await fetch('/api/send-booking-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        booking,
+                        action,
+                    }),
+                });
 
-            toast({
-                title: `Booking ${action}`,
-                description: `The booking request has been ${action.toLowerCase()}.`,
-            });
+                if (!emailResponse.ok) {
+                    console.error('Failed to send email notification');
+                    // Show warning but don't fail the approval
+                    toast({
+                        title: `Booking ${action}`,
+                        description: `The booking has been ${action.toLowerCase()}, but email notification failed to send.`,
+                        variant: "default",
+                    });
+                } else {
+                    toast({
+                        title: `Booking ${action}`,
+                        description: `The booking request has been ${action.toLowerCase()} and the user has been notified via email.`,
+                    });
+                }
+            } catch (emailError) {
+                console.error('Error sending email:', emailError);
+                // Email failed but booking was updated successfully
+                toast({
+                    title: `Booking ${action}`,
+                    description: `The booking has been ${action.toLowerCase()}, but email notification failed to send.`,
+                    variant: "default",
+                });
+            }
 
             // Remove from pending list
             setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
@@ -111,6 +145,7 @@ export default function PendingApprovalsPage() {
             setProcessingId(null);
         }
     };
+
 
     const getInitials = (name: string) => {
         if (!name) return "A";
@@ -299,6 +334,7 @@ export default function PendingApprovalsPage() {
                     ))
                 )}
             </div>
+
         </div>
     );
 }
