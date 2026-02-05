@@ -11,7 +11,7 @@ export default function RegisterPage() {
           },
         }}
         signInUrl="/login"
-        fallbackRedirectUrl="/dashboard"
+        fallbackRedirectUrl="https://www.aarx.space/dashboard"
       />
     </div>
   );
