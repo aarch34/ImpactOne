@@ -10,7 +10,6 @@ export default function RegisterPage() {
             card: 'shadow-lg',
           },
         }}
-        routing="hash"
         signInUrl="/login"
         afterSignUpUrl="/dashboard"
       />
