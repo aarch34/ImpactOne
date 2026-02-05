@@ -59,8 +59,7 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
-      await clerkSignOut();
-      router.push('/');
+      await clerkSignOut({ redirectUrl: '/' });
     } catch (error) {
       console.error("Error signing out: ", error);
     }
