@@ -11,7 +11,7 @@ export default function RegisterPage() {
           },
         }}
         signInUrl="/login"
-        afterSignUpUrl="/dashboard"
+        fallbackRedirectUrl="/dashboard"
       />
     </div>
   );
