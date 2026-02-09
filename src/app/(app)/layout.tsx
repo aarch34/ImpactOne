@@ -72,7 +72,7 @@ export default function AppLayout({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction asChild>
-                    <a href="mailto:admin@impactone.com">
+                    <a href="mailto:impact1.iceas@gmail.com">
                       <Mail className="mr-2 h-4 w-4" />
                       Contact Admin
                     </a>
