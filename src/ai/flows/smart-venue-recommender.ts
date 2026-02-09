@@ -8,8 +8,8 @@
  * - RecommendVenueOutput - The return type for the recommendVenue function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const RecommendVenueInputSchema = z.object({
   attendees: z
@@ -18,8 +18,8 @@ const RecommendVenueInputSchema = z.object({
   facilities: z
     .string()
     .describe(
-      'A comma-separated list of required facilities for the event (e.g., projector, whiteboard, sound system).' + 
-      'Supported facilities are: projector, whiteboard, sound system, stage, kitchen, wifi, A/C, drum kit.'
+      'A comma-separated list of required facilities for the event (e.g., projector, whiteboard, sound system).' +
+      'Supported facilities are: projector, whiteboard, sound system, stage, kitchen, wifi, A/C, drum kit, smart board, outdoor seating.'
     ),
 });
 export type RecommendVenueInput = z.infer<typeof RecommendVenueInputSchema>;
@@ -38,14 +38,16 @@ export async function recommendVenue(
 
 const prompt = ai.definePrompt({
   name: 'recommendVenuePrompt',
-  input: {schema: RecommendVenueInputSchema},
-  output: {schema: RecommendVenueOutputSchema},
+  input: { schema: RecommendVenueInputSchema },
+  output: { schema: RecommendVenueOutputSchema },
   prompt: `You are an AI venue recommendation expert. Based on the number of attendees and the required facilities, you will recommend the most suitable venue.
 
 Venues available:
 - Auditorium (capacity: 500, facilities: projector, sound system, stage, A/C, drum kit)
-- Impact Greens (capacity: 1000, facilities: kitchen). Note: Since it's an open space, special seating arrangements must be made. All audio, video, lighting, and tent setups are also additional and not included.
+- Impact Greens (capacity: 1000, facilities: ). Note: Since it's an open space, special seating arrangements must be made. All audio, video, lighting, and tent setups are also additional and not included.
 - Ramanujan Hall (capacity: 100, facilities: projector, whiteboard, sound system)
+- Visveswaraya Auditorium (capacity: 300, facilities: projector, sound system, A/C, stage)
+- CSE Seminar Hall (capacity: 80, facilities: projector, whiteboard, smart board)
 
 Consider the venue capacity and available facilities when making your recommendation. If a specific facility isn't available at any venue, mention that in the response.
 
@@ -64,7 +66,7 @@ const recommendVenueFlow = ai.defineFlow(
     outputSchema: RecommendVenueOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

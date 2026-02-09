@@ -66,13 +66,13 @@ export default function AppLayout({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Contact Support</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Need help? Click the button below to send an email to the system administrator. Please include a detailed description of your issue.
+                    Need help? Click the button below to send an email to the system administrator at <span className="font-semibold text-foreground">impact1.iceas@gmail.com</span>. Please include a detailed description of your issue.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction asChild>
-                    <a href="mailto:impact1.iceas@gmail.com">
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=impact1.iceas@gmail.com" target="_blank" rel="noopener noreferrer">
                       <Mail className="mr-2 h-4 w-4" />
                       Contact Admin
                     </a>

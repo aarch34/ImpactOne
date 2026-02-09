@@ -69,12 +69,11 @@ export const venues = [
 // ✅ Buses remain same
 export const buses = [
   { id: 'bus-1', name: 'Bus 1', capacity: 45, facilities: ['A/C'] },
-  { id: 'bus-2', name: 'Bus 2', capacity: 50, facilities: ['A/C', 'charging ports'] },
 ];
 
 // ✅ Turf areas (optional, for reference)
 export const turfAreas = [
-  { id: 'football', name: 'Football Area', icon: '⚽' },
-  { id: 'badminton', name: 'Badminton Area', icon: '🏸' },
-  { id: 'table-tennis', name: 'Table Tennis Area', icon: '🏓' },
+  { id: 'football', name: 'Football Area', icon: '' },
+  { id: 'badminton', name: 'Badminton Area', icon: '' },
+  { id: 'table-tennis', name: 'Table Tennis Area', icon: '' },
 ];

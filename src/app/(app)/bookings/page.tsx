@@ -12,7 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2, UtensilsCrossed, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { venues, buses, turfAreas, departmentCategories, departments } from "@/lib/data";
+import { venues, turfAreas, departmentCategories, departments, buses } from "@/lib/data";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,7 +30,7 @@ const TIME_SLOTS = [
 ];
 
 const bookingSchema = z.object({
-  resourceType: z.enum(["venue", "bus", "turf"], { required_error: "Please select a resource type." }),
+  resourceType: z.enum(["venue", "turf", "bus"], { required_error: "Please select a resource type." }),
   resourceId: z.string().optional(),
   subArea: z.string().optional(),
   selectedSlots: z.array(z.string()).min(1, "Please select at least one time slot."),
@@ -85,8 +85,7 @@ export default function BookingsPage() {
   // ✅ Check for conflicts whenever key fields change
   useEffect(() => {
     if (bookingDate && selectedSlots.length > 0) {
-      if ((resourceType === 'venue' && resourceId) ||
-        (resourceType === 'bus' && resourceId) ||
+      if (((resourceType === 'venue' || resourceType === 'bus') && resourceId) ||
         (resourceType === 'turf' && subArea)) {
         checkAvailability();
       }
@@ -147,7 +146,7 @@ export default function BookingsPage() {
           `"${c.eventTitle}" (${c.department}) - ${c.status}`
         ).join(', ');
         setConflictWarning(
-          `⚠️ This ${resourceType === 'turf' ? subArea + ' area' : 'resource'} is already booked on ${format(bookingDate, "PPP")} for: ${conflictMsg}`
+          `This ${resourceType === 'turf' ? subArea + ' area' : 'resource'} is already booked on ${format(bookingDate, "PPP")} for: ${conflictMsg}`
         );
       }
 
@@ -158,15 +157,107 @@ export default function BookingsPage() {
     }
   };
 
-  // ✅ Toggle slot selection
+  // ✅ Toggle slot selection with range fill
   const toggleSlot = (slot: string) => {
     const currentSlots = form.getValues("selectedSlots") || [];
     let newSlots: string[];
 
+    // 1. DESELECTION LOGIC (Trimming)
     if (currentSlots.includes(slot)) {
-      newSlots = currentSlots.filter(s => s !== slot);
-    } else {
-      newSlots = [...currentSlots, slot].sort();
+      if (currentSlots.length === 1 && currentSlots[0] === slot) {
+        // Clearing the last single slot
+        newSlots = [];
+      } else {
+        // User wants to TRIM the selection up to this point
+        const sorted = [...currentSlots].sort();
+        const startSlot = sorted[0];
+        const endSlot = slot; // The clicked slot becomes the new end
+
+        const startIdx = TIME_SLOTS.indexOf(startSlot);
+        const endIdx = TIME_SLOTS.indexOf(endSlot);
+
+        if (startIdx !== -1 && endIdx !== -1) {
+          // Ensure we go from start to clicked slot
+          // (User might click start, effectively keeping just start)
+          const low = Math.min(startIdx, endIdx);
+          const high = Math.max(startIdx, endIdx);
+
+          // Actually, if I click a slot, I want start..slot
+          // If slot < start (e.g. clicking something before start but it was selected?), that's impossible with sorted[0]
+          // But wait, what if the user clicked in the middle?
+          // They want to keep start..middle.
+
+          // So range is start..slot used as end.
+          if (endIdx < startIdx) {
+            // Should not happen if startSlot is truly min, but strictly:
+            // Range is min(start, end) .. max(start, end).
+            // But logical "start" is the existing block start.
+            // Logical "end" is the clicked slot.
+            // So we take everything between them.
+          }
+
+          const range = TIME_SLOTS.slice(low, high + 1);
+
+          // Filter to ensure we only keep what was already selected?
+          // No, "all the other to get de selected" implies removing whatever else was there.
+          // "only want till where i selected again".
+          // So the new set IS the range.
+          newSlots = range;
+        } else {
+          // Fallback
+          newSlots = currentSlots.filter(s => s !== slot);
+        }
+      }
+    }
+    // 2. SELECTION LOGIC (Filling)
+    else {
+      if (currentSlots.length > 0) {
+        // If we have existing slots, try to fill range from closest? or from start?
+        // User said: "when i press 2 time slots".
+        // If I have 1, and press 2nd -> Fill.
+        // If I have 5, and press 6th -> ?
+
+        // Let's stick to "Fill from Start".
+        const sorted = [...currentSlots].sort();
+        const startSlot = sorted[0];
+        const endSlot = sorted[sorted.length - 1];
+
+        // If clicked slot is after end, fill from end to new?
+        // Or fill from start to new?
+        // "2 time slots" implies just 2 points.
+        // If we have 1 selected, it's easy.
+
+        if (currentSlots.length === 1) {
+          const startIdx = TIME_SLOTS.indexOf(currentSlots[0]);
+          const endIdx = TIME_SLOTS.indexOf(slot);
+          if (startIdx !== -1 && endIdx !== -1) {
+            const low = Math.min(startIdx, endIdx);
+            const high = Math.max(startIdx, endIdx);
+            newSlots = TIME_SLOTS.slice(low, high + 1);
+          } else {
+            newSlots = [...currentSlots, slot].sort();
+          }
+        } else {
+          // Already multiple selected. Just add the new one?
+          // Or extend range?
+          // "betwen them to automatically fill"
+          // If I have 09:00..10:00. Click 12:00.
+          // I probably want 09:00..12:00.
+
+          // Let's try extending the range from the min/max to include the new slot.
+          const allIndices = [...currentSlots, slot].map(s => TIME_SLOTS.indexOf(s));
+          const minIdx = Math.min(...allIndices);
+          const maxIdx = Math.max(...allIndices);
+
+          if (minIdx !== -1 && maxIdx !== -1) {
+            newSlots = TIME_SLOTS.slice(minIdx, maxIdx + 1);
+          } else {
+            newSlots = [...currentSlots, slot].sort();
+          }
+        }
+      } else {
+        newSlots = [slot];
+      }
     }
 
     setSelectedSlots(newSlots);
@@ -198,7 +289,7 @@ export default function BookingsPage() {
     if (conflictWarning) {
       toast({
         variant: "destructive",
-        title: "❌ Booking Conflict Detected",
+        title: "Booking Conflict Detected",
         description: "Please check the calendar for available slots or choose a different time/date.",
       });
       return;
@@ -240,7 +331,7 @@ export default function BookingsPage() {
         resource_id: finalResourceId,
         resource_name: resourceName,
         sub_area: data.subArea || null,
-        facility: resourceTypeValue === 'turf' ? 'Turf' : resourceTypeValue,
+        facility: resourceTypeValue === 'turf' ? 'Turf' : (resourceTypeValue === 'bus' ? 'Bus' : 'Venue'),
         booking_date: format(data.bookingDate, "yyyy-MM-dd"),
         start_time: startTime,
         end_time: endTime,
@@ -260,7 +351,7 @@ export default function BookingsPage() {
         requester_email: userEmail,
       };
 
-      console.log('📝 Creating booking:', bookingData);
+      console.log('Creating booking:', bookingData);
 
       // ✅ SAVE TO SUPABASE
       const { data: booking, error } = await supabase
@@ -273,10 +364,10 @@ export default function BookingsPage() {
         throw error;
       }
 
-      console.log('✅ Booking created:', booking);
+      console.log('Booking created:', booking);
 
       toast({
-        title: "✅ Booking Request Submitted!",
+        title: "Booking Request Submitted!",
         description: `Your booking for ${resourceName} has been sent for approval.`,
       });
 
@@ -285,7 +376,7 @@ export default function BookingsPage() {
       setConflictWarning(null);
 
     } catch (error: any) {
-      console.error('❌ Booking error:', error);
+      console.error('Booking error:', error);
       toast({
         variant: "destructive",
         title: "Booking failed",
@@ -317,7 +408,7 @@ export default function BookingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold font-headline tracking-tight">Create a New Booking</h1>
-        <p className="text-muted-foreground">Fill in the details below to request a venue, bus, or turf slot.</p>
+        <p className="text-muted-foreground">Fill in the details below to request a venue or turf slot.</p>
       </div>
 
       {/* ✅ CONFLICT WARNING ALERT */}
@@ -368,7 +459,7 @@ export default function BookingsPage() {
                       <SelectContent>
                         <SelectItem value="venue">Venue</SelectItem>
                         <SelectItem value="bus">Bus</SelectItem>
-                        <SelectItem value="turf">🏟️ Turf</SelectItem>
+                        <SelectItem value="turf">Turf</SelectItem>
                       </SelectContent>
                     </Select>
                     {form.formState.errors.resourceType && (
@@ -411,9 +502,9 @@ export default function BookingsPage() {
                   control={form.control}
                   render={({ field }) => (
                     <div className="space-y-2">
-                      <Label htmlFor="resource">Bus</Label>
+                      <Label htmlFor="bus-resource">Bus</Label>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger id="resource">
+                        <SelectTrigger id="bus-resource">
                           <SelectValue placeholder="Select a bus" />
                         </SelectTrigger>
                         <SelectContent>
@@ -444,7 +535,7 @@ export default function BookingsPage() {
                         <SelectContent>
                           {turfAreas.map(area => (
                             <SelectItem key={area.id} value={area.name}>
-                              {area.icon} {area.name}
+                              {area.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
