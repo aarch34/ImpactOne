@@ -765,7 +765,7 @@ export default function BookingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="event-description">Event Description / Purpose</Label>
+              <Label htmlFor="event-description">Event Description / Purpose / Requirments</Label>
               <Textarea id="event-description" placeholder="A brief description of the event." {...form.register("eventDescription")} />
               {form.formState.errors.eventDescription && (
                 <p className="text-sm font-medium text-destructive">
