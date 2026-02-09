@@ -103,7 +103,7 @@ export default function AppLayout({
         </main>
         <footer className="border-t py-4 px-6 text-center text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
           <p>
-            Developed by <span className="font-semibold text-foreground">Thejaswin P (1IC23CS082)</span> and <span className="font-semibold text-foreground">Aarcha U (1IC21AI001)</span>
+            Developed by <a href="https://aarx.space" target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground hover:underline">Thejaswin P (1IC23CS082)</a> and <span className="font-semibold text-foreground">Aarcha U (1IC21AI001)</span>
           </p>
         </footer>
       </div>
