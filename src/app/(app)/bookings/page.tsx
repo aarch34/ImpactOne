@@ -24,7 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 // ✅ Time slots with lunch break excluded
 const TIME_SLOTS = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-  "12:00", "12:30",
+  "12:00", "12:30", "13:00",
   // 13:00 (1:00 PM) - 14:00 (2:00 PM) = LUNCH BREAK
   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"
 ];
@@ -612,8 +612,10 @@ export default function BookingsPage() {
             {/* TIME SLOT GRID */}
             <div className="space-y-2">
               <Label>Select Time Slots {selectedSlots.length > 0 && `(${selectedSlots.length} selected)`}</Label>
+
+              {/* Morning Slots */}
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {TIME_SLOTS.map((slot) => {
+                {TIME_SLOTS.filter(slot => slot <= "13:00").map((slot) => {
                   const isSelected = selectedSlots.includes(slot);
                   return (
                     <Button
@@ -628,15 +630,39 @@ export default function BookingsPage() {
                         durationType === "full-day" && "opacity-50"
                       )}
                     >
-                      {slot === "12:30" ? "12:30 - 01:00" : slot}
+                      {slot}
                     </Button>
                   );
                 })}
+              </div>
 
-                <div className="col-span-3 sm:col-span-4 flex items-center justify-center gap-2 py-2 px-4 bg-orange-50 border border-orange-200 rounded-md">
-                  <UtensilsCrossed className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-700">Lunch Break: 1:00 PM - 2:00 PM</span>
-                </div>
+              {/* Lunch Break Banner */}
+              <div className="flex items-center justify-center gap-2 py-2 px-4 bg-orange-50 border border-orange-200 rounded-md my-2">
+                <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+                <span className="text-sm font-medium text-orange-700">Lunch Break: 1:00 PM - 2:00 PM</span>
+              </div>
+
+              {/* Afternoon Slots */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {TIME_SLOTS.filter(slot => slot >= "14:00").map((slot) => {
+                  const isSelected = selectedSlots.includes(slot);
+                  return (
+                    <Button
+                      key={slot}
+                      type="button"
+                      variant="outline"
+                      disabled={durationType === "full-day"}
+                      onClick={() => toggleSlot(slot)}
+                      className={cn(
+                        "h-12 text-sm font-medium transition-all",
+                        isSelected && "bg-primary text-primary-foreground border-primary hover:bg-primary/90",
+                        durationType === "full-day" && "opacity-50"
+                      )}
+                    >
+                      {slot}
+                    </Button>
+                  );
+                })}
               </div>
               {form.formState.errors.selectedSlots && (
                 <p className="text-sm font-medium text-destructive">
