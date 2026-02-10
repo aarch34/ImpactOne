@@ -89,11 +89,20 @@ export default function AppLayout({
             <SidebarTrigger className="md:hidden" />
             <div className="relative w-full max-w-sm hidden md:block">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search bookings, venues..."
-                className="w-full bg-muted pl-8"
-              />
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const query = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value;
+                if (query.trim()) {
+                  window.location.href = `/search?q=${encodeURIComponent(query)}`;
+                }
+              }}>
+                <Input
+                  type="search"
+                  name="q"
+                  placeholder="Search bookings, venues..."
+                  className="w-full bg-muted pl-8"
+                />
+              </form>
             </div>
           </div>
           <UserNav />
