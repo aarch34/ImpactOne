@@ -19,8 +19,9 @@ export const departments: Record<string, { id: string; name: string }[]> = {
   Management: [
     { id: 'mba', name: 'MBA' },
     { id: 'bba', name: 'BBA' },
+    { id: 'bca', name: 'BCA' },
+    { id: 'bsc', name: 'BSC' },
     { id: 'bcom', name: 'BCom' },
-    { id: 'other-bachelors', name: "Other Bachelor's Degree" },
   ],
   Architecture: [
     { id: 'architecture', name: 'Architecture' },
