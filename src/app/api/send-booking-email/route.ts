@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const { GMAIL_USER, GMAIL_APP_PASSWORD } = process.env;
+    const { GMAIL_USER, GMAIL_APP_PASSWORD, ADMIN_EMAIL } = process.env;
     if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
       return Response.json(
         { error: 'Email service not configured' },
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
 
     // Status colors and icons
     const statusConfig = {
+      Requested: { color: '#3b82f6', icon: '📩', bg: '#eff6ff', border: '#2563eb' },
       Approved: { color: '#10b981', icon: '✅', bg: '#ecfdf5', border: '#059669' },
       Rejected: { color: '#ef4444', icon: '❌', bg: '#fef2f2', border: '#b91c1c' },
       Cancelled: { color: '#f97316', icon: '⚠️', bg: '#fff7ed', border: '#c2410c' },
@@ -91,12 +92,14 @@ export async function POST(request: Request) {
               ${config.icon} Booking ${action}
             </div>
             <p style="margin: 0; color: ${config.border}; opacity: 0.9;">
-              Your booking request has been <strong>${action.toLowerCase()}</strong>.
+              ${action === 'Requested'
+        ? 'A new booking request requires your approval.'
+        : `Your booking request has been <strong>${action.toLowerCase()}</strong>.`}
             </p>
           </div>
 
           <div class="content">
-            <p class="greeting">Hello <strong>${booking.requester_name}</strong>,</p>
+            <p class="greeting">Hello <strong>${action === 'Requested' ? 'Admin' : booking.requester_name}</strong>,</p>
             
             <div class="details-card">
               <div class="detail-row">
@@ -119,6 +122,10 @@ export async function POST(request: Request) {
                 <div class="detail-label">Attendees</div>
                 <div class="detail-value">${booking.attendees}</div>
               </div>
+              <div class="detail-row">
+                <div class="detail-label">Requester</div>
+                <div class="detail-value">${booking.requester_name} (${booking.requester_email})</div>
+              </div>
             </div>
 
             ${(isRejected || isCancelled) && reason ? `
@@ -128,7 +135,11 @@ export async function POST(request: Request) {
               </div>
             ` : ''}
 
-            ${isApproved ? `
+            ${action === 'Requested' ? `
+               <p style="text-align: center;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/pending-approvals" class="button">Review Request</a>
+              </p>
+            ` : isApproved ? `
               <p style="text-align: center;">
                 <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" class="button">View Booking Details</a>
               </p>
@@ -144,9 +155,12 @@ export async function POST(request: Request) {
       </html>
     `;
 
+    console.log(`Sending email for action: ${action}`);
+    console.log(`To: ${action === 'Requested' ? GMAIL_USER : booking.requester_email}`);
+
     await transporter.sendMail({
       from: `"ImpactOne" <${GMAIL_USER}>`,
-      to: booking.requester_email,
+      to: action === 'Requested' ? (ADMIN_EMAIL || GMAIL_USER) : booking.requester_email,
       subject,
       html,
     });

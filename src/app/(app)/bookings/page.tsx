@@ -366,6 +366,18 @@ export default function BookingsPage() {
 
       console.log('Booking created:', booking);
 
+      // ✅ Send email to Admin
+      await fetch('/api/send-booking-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          booking,
+          action: 'Requested',
+        }),
+      });
+
       toast({
         title: "Booking Request Submitted!",
         description: `Your booking for ${resourceName} has been sent for approval.`,
