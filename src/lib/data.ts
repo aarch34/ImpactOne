@@ -3,6 +3,9 @@ export const departmentCategories = [
   { id: 'engineering', name: 'Engineering', color: 'hsl(210, 80%, 50%)' },
   { id: 'management', name: 'Management', color: 'hsl(120, 80%, 35%)' },
   { id: 'architecture', name: 'Architecture', color: 'hsl(30, 80%, 50%)' },
+  { id: 'placements', name: 'Training and Placement', color: 'hsl(270, 80%, 50%)' },
+  { id: 'marketing', name: 'Marketing', color: 'hsl(340, 80%, 50%)' },
+  { id: 'polytechnic', name: 'Polytechnic', color: 'hsl(180, 80%, 40%)' },
 ];
 
 export const departments: Record<string, { id: string; name: string }[]> = {
@@ -26,17 +29,20 @@ export const departments: Record<string, { id: string; name: string }[]> = {
   Architecture: [
     { id: 'architecture', name: 'Architecture' },
   ],
+  'Training and Placement': [
+    { id: 'tnp', name: 'Training and Placement Cell' },
+  ],
+  Marketing: [
+    { id: 'marketing', name: 'Marketing Team' },
+  ],
+  Polytechnic: [
+    { id: 'polytechnic', name: 'Polytechnic' },
+  ],
 };
 
 // ✅ Updated Venues with CSE Seminar Hall
 export const venues = [
-  {
-    id: 'auditorium',
-    name: 'Auditorium',
-    capacity: 500,
-    facilities: ['projector', 'sound system', 'stage', 'A/C', 'drum kit'],
-    imageId: 'auditorium'
-  },
+
   {
     id: 'impact-greens',
     name: 'Impact Greens',
