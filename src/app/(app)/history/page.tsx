@@ -8,6 +8,7 @@ import { FileDown, Loader2, AlertTriangle, Download } from "lucide-react";
 import { useUser } from '@clerk/nextjs';
 import { supabase, type Booking } from '@/lib/supabase/client';
 import { format } from 'date-fns';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BookingAcknowledgment } from "@/components/app/booking-acknowledgment";
 
 export default function HistoryPage() {
@@ -18,6 +19,8 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+    const [selectedReasonBooking, setSelectedReasonBooking] = useState<Booking | null>(null);
 
     // Check if user is admin
     const userEmail = user?.primaryEmailAddress?.emailAddress;
@@ -77,10 +80,17 @@ export default function HistoryPage() {
         }
     };
 
+    const handleStatusClick = (booking: Booking) => {
+        if (booking.status === 'Rejected' || booking.status === 'Cancelled') {
+            setSelectedReasonBooking(booking);
+            setReasonDialogOpen(true);
+        }
+    };
+
     const exportToCSV = () => {
         if (!bookings || bookings.length === 0) return;
 
-        const headers = ['ID', 'Event Title', 'Resource', 'Department', 'Date', 'Requester', 'Faculty In-charge', 'Contact', 'Attendees', 'Status'];
+        const headers = ['ID', 'Event Title', 'Resource', 'Department', 'Date', 'Requester', 'Faculty In-charge', 'Contact', 'Attendees', 'Status', 'Reason'];
         const csvContent = [
             headers.join(','),
             ...bookings.map(booking => [
@@ -93,7 +103,8 @@ export default function HistoryPage() {
                 `"${booking.faculty_incharge || 'N/A'}"`,
                 `"${booking.contact_number || 'N/A'}"`,
                 booking.attendees || 0,
-                booking.status || 'N/A'
+                booking.status || 'N/A',
+                `"${booking.status === 'Rejected' ? booking.rejection_reason || '' : booking.status === 'Cancelled' ? booking.cancellation_reason || '' : ''}"`
             ].join(','))
         ].join('\n');
 
@@ -212,10 +223,11 @@ export default function HistoryPage() {
                                 <TableCell className="text-right">
                                     <Badge
                                         variant={getBadgeVariant(booking.status)}
-                                        className={
-                                            booking.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" :
-                                                booking.status === "Cancelled" ? "bg-gray-500 text-white hover:bg-gray-600" : ""
-                                        }
+                                        className={`cursor-pointer ${booking.status === "Approved" ? "bg-green-600 text-white hover:bg-green-700" :
+                                            booking.status === "Cancelled" ? "bg-gray-500 text-white hover:bg-gray-600" : ""
+                                            }`}
+                                        onClick={() => handleStatusClick(booking)}
+                                        title={booking.status === 'Rejected' || booking.status === 'Cancelled' ? "Click to view reason" : ""}
                                     >
                                         {booking.status || 'Unknown'}
                                     </Badge>
@@ -273,6 +285,31 @@ export default function HistoryPage() {
                     onClose={() => setSelectedBooking(null)}
                 />
             )}
+
+            {/* Reason Dialog */}
+            <Dialog open={reasonDialogOpen} onOpenChange={setReasonDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {selectedReasonBooking?.status === 'Rejected' ? 'Rejection Reason' : 'Cancellation Reason'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Reason provided for this action:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-muted-foreground bg-muted p-4 rounded-md">
+                            {selectedReasonBooking?.status === 'Rejected'
+                                ? (selectedReasonBooking.rejection_reason || "No reason provided.")
+                                : (selectedReasonBooking?.cancellation_reason || "No reason provided.")
+                            }
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setReasonDialogOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

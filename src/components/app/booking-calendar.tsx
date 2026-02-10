@@ -127,6 +127,7 @@ export function BookingCalendar() {
         .from('bookings')
         .update({
           status: 'Cancelled',
+          cancellation_reason: cancellationReason.trim(),
           reviewed_at: new Date().toISOString(),
           reviewed_by: userEmail
         })
@@ -144,7 +145,7 @@ export function BookingCalendar() {
           body: JSON.stringify({
             booking: selectedBookingForCancel,
             action: 'Cancelled',
-            cancellationReason: cancellationReason.trim(),
+            reason: cancellationReason.trim(), // Unified reason field
           }),
         });
 
@@ -172,7 +173,7 @@ export function BookingCalendar() {
 
       // Update local state
       setBookings(prev => prev.map(b =>
-        b.id === selectedBookingForCancel.id ? { ...b, status: 'Cancelled' as const } : b
+        b.id === selectedBookingForCancel.id ? { ...b, status: 'Cancelled' as const, cancellation_reason: cancellationReason.trim() } : b
       ));
 
       // Close dialog and reset

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   reviewed_at timestamp with time zone,
   reviewed_by text,
   cancellation_reason text,
+  rejection_reason text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT bookings_pkey PRIMARY KEY (id)

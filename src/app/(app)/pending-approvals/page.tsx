@@ -25,6 +25,10 @@ export default function PendingApprovalsPage() {
     const { toast } = useToast();
     const router = useRouter();
 
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+
     // Check if user is admin
     const userEmail = user?.primaryEmailAddress?.emailAddress;
     const isAdmin = userEmail === ADMIN_EMAIL;
@@ -71,7 +75,7 @@ export default function PendingApprovalsPage() {
         }
     }, [isLoaded, isAdmin]);
 
-    const handleApproval = async (bookingId: string, action: 'Approved' | 'Rejected') => {
+    const handleApproval = async (bookingId: string) => {
         setProcessingId(bookingId);
 
         try {
@@ -86,7 +90,7 @@ export default function PendingApprovalsPage() {
             const { error } = await supabase
                 .from('bookings')
                 .update({
-                    status: action,
+                    status: 'Approved',
                     reviewed_at: new Date().toISOString(),
                     reviewed_by: userEmail
                 })
@@ -103,30 +107,28 @@ export default function PendingApprovalsPage() {
                     },
                     body: JSON.stringify({
                         booking,
-                        action,
+                        action: 'Approved',
                     }),
                 });
 
                 if (!emailResponse.ok) {
                     console.error('Failed to send email notification');
-                    // Show warning but don't fail the approval
                     toast({
-                        title: `Booking ${action}`,
-                        description: `The booking has been ${action.toLowerCase()}, but email notification failed to send.`,
+                        title: `Booking Approved`,
+                        description: `The booking has been approved, but email notification failed to send.`,
                         variant: "default",
                     });
                 } else {
                     toast({
-                        title: `Booking ${action}`,
-                        description: `The booking request has been ${action.toLowerCase()} and the user has been notified via email.`,
+                        title: `Booking Approved`,
+                        description: `The booking request has been approved and the user has been notified via email.`,
                     });
                 }
             } catch (emailError) {
                 console.error('Error sending email:', emailError);
-                // Email failed but booking was updated successfully
                 toast({
-                    title: `Booking ${action}`,
-                    description: `The booking has been ${action.toLowerCase()}, but email notification failed to send.`,
+                    title: `Booking Approved`,
+                    description: `The booking has been approved, but email notification failed to send.`,
                     variant: "default",
                 });
             }
@@ -143,6 +145,76 @@ export default function PendingApprovalsPage() {
             });
         } finally {
             setProcessingId(null);
+        }
+    };
+
+    const openRejectDialog = (bookingId: string) => {
+        setSelectedBookingId(bookingId);
+        setRejectionReason("");
+        setIsRejectDialogOpen(true);
+    };
+
+    const confirmRejection = async () => {
+        if (!selectedBookingId) return;
+
+        setProcessingId(selectedBookingId);
+        setIsRejectDialogOpen(false); // Close dialog immediately
+
+        try {
+            const booking = pendingBookings.find(b => b.id === selectedBookingId);
+            if (!booking) throw new Error('Booking not found');
+
+            // Update booking status in Supabase
+            const { error } = await supabase
+                .from('bookings')
+                .update({
+                    status: 'Rejected',
+                    rejection_reason: rejectionReason, // Save the reason
+                    reviewed_at: new Date().toISOString(),
+                    reviewed_by: userEmail
+                })
+                .eq('id', selectedBookingId);
+
+            if (error) throw error;
+
+            // Send email notification
+            try {
+                await fetch('/api/send-booking-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        booking,
+                        action: 'Rejected',
+                        reason: rejectionReason, // Send reason to email API
+                    }),
+                });
+
+                toast({
+                    title: "Booking Rejected",
+                    description: "The booking request has been rejected.",
+                });
+            } catch (emailError) {
+                console.error('Error sending email:', emailError);
+                toast({
+                    title: "Booking Rejected",
+                    description: "Booking rejected, but email notification failed.",
+                    variant: "default", // Warning
+                });
+            }
+
+            // Remove from list
+            setPendingBookings(prev => prev.filter(b => b.id !== selectedBookingId));
+
+        } catch (error: any) {
+            console.error("Error updating booking:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to reject booking.",
+            });
+        } finally {
+            setProcessingId(null);
+            setSelectedBookingId(null);
         }
     };
 
@@ -294,7 +366,7 @@ export default function PendingApprovalsPage() {
                                     {/* Action Buttons */}
                                     <div className="flex gap-3 pt-2">
                                         <Button
-                                            onClick={() => handleApproval(booking.id, 'Approved')}
+                                            onClick={() => handleApproval(booking.id)}
                                             disabled={processingId === booking.id}
                                             className="flex-1 bg-green-600 hover:bg-green-700"
                                         >
@@ -308,7 +380,7 @@ export default function PendingApprovalsPage() {
                                             )}
                                         </Button>
                                         <Button
-                                            onClick={() => handleApproval(booking.id, 'Rejected')}
+                                            onClick={() => openRejectDialog(booking.id)}
                                             disabled={processingId === booking.id}
                                             variant="destructive"
                                             className="flex-1"
@@ -334,6 +406,38 @@ export default function PendingApprovalsPage() {
                     ))
                 )}
             </div>
+
+            <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reject Booking Request</DialogTitle>
+                        <DialogDescription>
+                            Please provide a reason for rejecting this booking. This will be sent to the requester.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="reason">Rejection Reason</Label>
+                            <Textarea
+                                id="reason"
+                                placeholder="e.g., Venue unavailable, Schedule conflict..."
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmRejection}
+                            disabled={!rejectionReason.trim()}
+                        >
+                            Confirm Rejection
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </div>
     );

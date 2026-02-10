@@ -1,24 +1,36 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs'; // Use Node.js runtime for Nodemailer
+
+import nodemailer from 'nodemailer';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { booking, action, cancellationReason } = body;
+    const { booking, action, reason } = body;
+    const cancellationReason = reason; // Alias for backward compatibility if needed, or just use reason
 
     if (!booking || !action) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    if (!RESEND_API_KEY) {
+    const { GMAIL_USER, GMAIL_APP_PASSWORD } = process.env;
+    if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
       return Response.json(
         { error: 'Email service not configured' },
         { status: 500 }
       );
     }
 
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD,
+      },
+    });
+
     const isApproved = action === 'Approved';
     const isCancelled = action === 'Cancelled';
+    const isRejected = action === 'Rejected';
 
     const bookingDate = new Date(booking.booking_date).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -46,32 +58,20 @@ export async function POST(request: Request) {
       ${isApproved
         ? `<p style="color:green;">✅ Your booking has been confirmed.</p>`
         : isCancelled
-          ? `<p style="color:orange;">⚠️ Cancelled: ${cancellationReason || 'No reason provided'}</p>`
-          : `<p style="color:red;">❌ Booking not approved.</p>`
+          ? `<p style="color:orange;">⚠️ Cancelled: ${reason || 'No reason provided'}</p>`
+          : `<p style="color:red;">❌ Booking not approved.${reason ? ` Reason: ${reason}` : ''}</p>`
       }
 
       <hr />
       <p>This is an automated message from ImpactOne.</p>
     `;
 
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'ImpactOne <no-reply@impactone.com>',
-        to: booking.requester_email,
-        subject,
-        html,
-      }),
+    await transporter.sendMail({
+      from: `"ImpactOne" <${GMAIL_USER}>`,
+      to: booking.requester_email,
+      subject,
+      html,
     });
-
-    if (!resendResponse.ok) {
-      const error = await resendResponse.text();
-      throw new Error(error);
-    }
 
     return Response.json({ message: 'Email sent successfully' });
 

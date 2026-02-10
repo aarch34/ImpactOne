@@ -38,6 +38,8 @@ export type Booking = {
     reviewed_by?: string;
     created_at?: string;
     updated_at?: string;
+    rejection_reason?: string;
+    cancellation_reason?: string;
 };
 
 export type Notification = {
