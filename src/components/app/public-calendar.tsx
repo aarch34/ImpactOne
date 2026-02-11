@@ -70,9 +70,9 @@ export function PublicCalendar() {
         if (booking.selected_slots && booking.selected_slots.length > 0) {
             const sortedSlots = [...booking.selected_slots].sort();
             if (sortedSlots.length === 1) {
-                return `${sortedSlots[0]} - ${addThirtyMinutes(sortedSlots[0])}`;
+                return sortedSlots[0];
             }
-            return `${sortedSlots[0]} - ${addThirtyMinutes(sortedSlots[sortedSlots.length - 1])}`;
+            return `${sortedSlots[0]} - ${sortedSlots[sortedSlots.length - 1]}`;
         }
         return `${booking.start_time} - ${booking.end_time}`;
     };

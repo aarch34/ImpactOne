@@ -84,6 +84,18 @@ function SearchResults() {
         searchBookings();
     }, [query]);
 
+    // Format time display based on selected slots
+    const formatTimeDisplay = (booking: Booking) => {
+        if (booking.duration_type === "full-day") {
+            return "Full Day";
+        }
+        if (booking.selected_slots && booking.selected_slots.length > 0) {
+            const sortedSlots = [...booking.selected_slots].sort();
+            return `${sortedSlots[0]} - ${sortedSlots[sortedSlots.length - 1]}`;
+        }
+        return `${booking.start_time || "N/A"} - ${booking.end_time || "N/A"}`;
+    };
+
     if (!query) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -205,7 +217,7 @@ function SearchResults() {
                                         </p>
                                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                                             <Clock className="h-3 w-3" />
-                                            {format(new Date(booking.booking_date), 'MMM dd, yyyy')} • {booking.start_time} - {booking.end_time}
+                                            {format(new Date(booking.booking_date), 'MMM dd, yyyy')} • {formatTimeDisplay(booking)}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-muted-foreground">

@@ -315,7 +315,10 @@ export default function BookingsPage() {
     const startTime = sortedSlots[0];
     const lastSlot = sortedSlots[sortedSlots.length - 1];
     const [hour, minute] = lastSlot.split(':');
-    const endTime = `${hour}:${parseInt(minute) + 30 === 60 ? String(parseInt(hour) + 1).padStart(2, '0') : hour}:${parseInt(minute) + 30 === 60 ? '00' : String(parseInt(minute) + 30)}`;
+    const totalMinutes = parseInt(hour) * 60 + parseInt(minute) + 30;
+    const endHour = Math.floor(totalMinutes / 60);
+    const endMinute = totalMinutes % 60;
+    const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
 
     // ✅ Get user display name and email
     const userName = user.fullName ||
@@ -615,7 +618,7 @@ export default function BookingsPage() {
                   onClick={() => handleDurationChange("full-day")}
                   className="flex-1"
                 >
-                  Full Day (9:00 AM - 5:00 PM)
+                  Full Day (9:00 AM - 4:30 PM)
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">Note: 1:00 PM - 2:00 PM is lunch break</p>

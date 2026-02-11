@@ -224,6 +224,18 @@ export default function PendingApprovalsPage() {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
+    // Format time display based on selected slots
+    const formatTimeDisplay = (booking: Booking) => {
+        if (booking.duration_type === "full-day") {
+            return "Full Day";
+        }
+        if (booking.selected_slots && booking.selected_slots.length > 0) {
+            const sortedSlots = [...booking.selected_slots].sort();
+            return `${sortedSlots[0]} - ${sortedSlots[sortedSlots.length - 1]}`;
+        }
+        return `${booking.start_time || "N/A"} - ${booking.end_time || "N/A"}`;
+    };
+
     if (!isLoaded || loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -314,7 +326,7 @@ export default function PendingApprovalsPage() {
                                             <div className="flex items-center gap-2 text-sm">
                                                 <Clock className="h-4 w-4 text-muted-foreground" />
                                                 <span>
-                                                    <strong>Time:</strong> {booking.start_time} - {booking.end_time}
+                                                    <strong>Time:</strong> {formatTimeDisplay(booking)}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm">

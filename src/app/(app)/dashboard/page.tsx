@@ -100,6 +100,18 @@ export default function DashboardPage() {
     }
   };
 
+  // Format time display based on selected slots
+  const formatTimeDisplay = (booking: Booking) => {
+    if (booking.duration_type === "full-day") {
+      return "Full Day";
+    }
+    if (booking.selected_slots && booking.selected_slots.length > 0) {
+      const sortedSlots = [...booking.selected_slots].sort();
+      return `${sortedSlots[0]} - ${sortedSlots[sortedSlots.length - 1]}`;
+    }
+    return `${booking.start_time || "N/A"} - ${booking.end_time || "N/A"}`;
+  };
+
   if (!isLoaded || loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -220,7 +232,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         <span>
-                          {booking.start_time || "N/A"} - {booking.end_time || "N/A"}
+                          {formatTimeDisplay(booking)}
                         </span>
                       </div>
                     </div>

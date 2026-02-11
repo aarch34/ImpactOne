@@ -83,14 +83,14 @@ export function BookingCalendar() {
   // Format time slots display
   const formatTimeSlots = (booking: Booking) => {
     if (booking.duration_type === "full-day") {
-      return "Full Day (9:00 AM - 5:00 PM)";
+      return "Full Day (9:00 AM - 4:30 PM)";
     }
     if (booking.selected_slots && booking.selected_slots.length > 0) {
       const sortedSlots = [...booking.selected_slots].sort();
       if (sortedSlots.length === 1) {
-        return `${sortedSlots[0]} - ${addThirtyMinutes(sortedSlots[0])}`;
+        return sortedSlots[0];
       }
-      return `${sortedSlots[0]} - ${addThirtyMinutes(sortedSlots[sortedSlots.length - 1])} (${sortedSlots.length} slots)`;
+      return `${sortedSlots[0]} - ${sortedSlots[sortedSlots.length - 1]} (${sortedSlots.length} slots)`;
     }
     return `${booking.start_time} - ${booking.end_time}`;
   };
